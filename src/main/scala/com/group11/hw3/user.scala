@@ -28,10 +28,11 @@ class User(context: ActorContext[DataRequest]) extends AbstractBehavior[DataRequ
   override def onMessage(msg: DataRequest): Behavior[DataRequest] =
     msg match {
       case ReadKey(key) =>
-        context.log.info("{} received message: {}", context.self.path.name)
+        context.log.info2("{} received read request key: {}", context.self.path.name, key)
         val readResponse = request.param("name",key).asString
         this
       case WriteValue(key,value) =>
+        context.log.info2("{} received write request key: {}", context.self.path.name, key)
         val writeResponse = request.postForm(Seq("name"->key,"val"->value)).asString
         this
     }
