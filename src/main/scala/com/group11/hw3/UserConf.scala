@@ -1,5 +1,5 @@
 package com.group11.hw3
 
-class UserConf {
-
+object UserConf {
+  val numUsers = 4
 }
