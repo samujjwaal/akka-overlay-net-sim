@@ -11,7 +11,7 @@ class akkaHttpServer {
   var bindingFuture: Future[Http.ServerBinding] = _
   def startServer(): Unit =
   {
-    implicit val system: ActorSystem = ActorSystem("helloworld")
+    implicit val system: ActorSystem = ActorSystem("hello-world")
     implicit val executor: ExecutionContext = system.dispatcher
     implicit val materializer: ActorMaterializer = ActorMaterializer()
 
