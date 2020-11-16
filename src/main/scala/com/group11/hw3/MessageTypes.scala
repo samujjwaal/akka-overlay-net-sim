@@ -14,3 +14,11 @@ case class writeKeyValue(key: String, value: String) extends  NodeRequest
 
 
 
+
+case class FindNode(node: ActorRef)
+
+trait NodeCommand
+case class GetNodeIndex() extends NodeCommand
+case class DisplayNodeInfo() extends NodeCommand
+case class FindPredecessor(key: String) extends NodeCommand
+case class FindSuccessor(key: String) extends NodeCommand

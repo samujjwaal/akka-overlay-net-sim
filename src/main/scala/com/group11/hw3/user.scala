@@ -4,6 +4,7 @@ import akka.NotUsed
 import akka.actor.typed.scaladsl.{Behaviors, LoggerOps, Routers}
 import akka.actor.typed.{Behavior, SupervisorStrategy}
 import scalaj.http._
+import scala.io.Source
 
 
 object User {
@@ -20,6 +21,8 @@ object User {
         val writeResponse = request.params(("name", key), ("val", value)).method("POST").option(HttpOptions.connTimeout(10000)).asString
         context.log.info2("key: {} Write response: {}", key, writeResponse.body.toString)
         Behaviors.same
+      case _ =>
+        Behaviors.unhandled
     }
   }
 }
@@ -32,8 +35,26 @@ object UserSystem{
     )
     val router = context.spawn(pool,"users-pool")
 
-    router ! ReadKey("readmykey")
-    router ! WriteValue("mykey","myvalue")
+    val dataSource = Source.fromFile("src/main/resources/listfile.txt")
+    val data = dataSource.getLines.slice(0,UserConf.totalRecords).toList
+    val readData: List[String]  = data.slice(0,UserConf.recordsToRead)
+    val writeData: List[String] = data.slice(UserConf.recordsToRead,UserConf.totalRecords)
+
+    var numRequest = 0
+    while (numRequest < UserConf.totalRequest){
+      if (Utils.randomlySelectRequestType()) {
+//        println("------ readData size : ",readData.size)
+        val index = Utils.randomlySelectDataIndex(readData.size)
+        router ! ReadKey(readData(index).split(',')(0))
+      }
+      else {
+//        println("------ writeData size : ",writeData.size)
+        val index = Utils.randomlySelectDataIndex(writeData.size)
+        val record = writeData(index).split(',')
+        router ! WriteValue(record(0),record(1))
+      }
+      numRequest = numRequest + 1
+    }
 
 
     Behaviors.empty
