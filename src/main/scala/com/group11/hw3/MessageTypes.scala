@@ -8,5 +8,9 @@ case class WriteValue(key: String, value: String) extends DataRequest
 
 trait NodeRequest
 case class FindNode(node: ActorRef[Nothing]) extends NodeRequest
-case class getKeyValue(actorRef: ActorRef[Nothing],key: String) extends NodeRequest
+case class getKeyValue(key: String) extends NodeRequest
 case class writeKeyValue(key: String, value: String) extends  NodeRequest
+
+
+
+

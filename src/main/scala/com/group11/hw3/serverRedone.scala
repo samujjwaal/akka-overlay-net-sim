@@ -1,41 +1,61 @@
 package com.group11.hw3
 
+import akka.http.scaladsl.server.Directives._
 import akka.NotUsed
-import akka.actor.typed.scaladsl.{Behaviors, Routers}
-import akka.actor.typed.{ActorSystem, Behavior, SupervisorStrategy}
+import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives.{complete, concat, get, path, post}
+import com.group11.hw3.utils.ChordUtils
 
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 
 object serverRedone {
 
-  def apply(): Behavior[Nothing] = Behaviors.setup { context =>
+  def apply(): Behavior[NotUsed] = Behaviors.setup { context =>
+    var hashMap = new mutable.HashMap[String,ActorRef[NodeRequest]]()
+    val nodeList = new Array[String](11)
 
-    //Start the server
-    val pool = Routers.pool(poolSize = ServerConf.numOfNodes)(
-      Behaviors.supervise(DummyNode()).onFailure[Exception](SupervisorStrategy.restart)
-    )
-    val chordRouter = context.spawn(pool,"users-pool")
     implicit val system:ActorSystem[NotUsed]=ActorSystem(Behaviors.empty,"http-server")
     implicit val executor: ExecutionContext = system.executionContext
 
+    //Create nodes
+    for (i <- 0 to 10) {
+
+      var hashID=ChordUtils.md5("N"+i)
+      nodeList(i)=hashID
+      var actRef=context.spawn(DummyNode(hashID),hashID)
+      hashMap.addOne(ChordUtils.md5("N"+i),actRef)
+    }
+    val r = new scala.util.Random
+
+    //Define and start http server
     val route = path("placeholder") {
       concat(
         get {
-          //context.ask(chordRouter,getKeyValue(context.self,"key"))
-          chordRouter ! getKeyValue(context.self,"key")
-          complete("Get method")
-
+          parameters("name".as[String]) { (key) =>
+            val index=r.nextInt(10)
+            val nodeHash=nodeList(index)
+            val x=hashMap.get(nodeHash)
+            x.head ! getKeyValue(key)
+            complete("Get method done")
+          }
         },
         post {
+          parameters("name".as[String],"val".as[String]) { (key,value) =>
+            val index=r.nextInt(10)
+            val nodeHash=nodeList(index)
+            val x=hashMap.get(nodeHash)
+            x.head ! writeKeyValue(key,value)
+            complete("Post method done")
+          }
 
-          complete("Post method")
         }
       )
     }
     val bindingFuture = Http().newServerAt("localhost", 9000).bind(route)
-    
     Behaviors.empty
   }
 
@@ -43,14 +63,17 @@ object serverRedone {
 
 
 object DummyNode {
-  def apply(): Behavior[NodeRequest] = Behaviors.setup { context =>
-    //val request: HttpRequest = Http("http://localhost:9000/placeholder")
+  var DummyNodeServiceKey = ServiceKey[NodeRequest]("")
+  def apply(hash:String): Behavior[NodeRequest] = Behaviors.setup { context =>
+    DummyNodeServiceKey=ServiceKey[NodeRequest](hash)
+    context.system.receptionist ! Receptionist.Register(DummyNodeServiceKey, context.self)
+
     Behaviors.receiveMessage {
-      case ReadKey(key) =>
-        context.log.info("{} received read request for key: {}", context.self.path.name, key)
+      case getKeyValue(key) =>
+        context.log.info("{} received read request by NODE ACTOR for key: {}", context.self.path.name, key)
         Behaviors.same
-      case WriteValue(key,value) =>
-        context.log.info("{} received write request for key: {}, value: {}", context.self.path.name, key, value)
+      case writeKeyValue(key,value) =>
+        context.log.info("{} received write request by NODE ACTOR for key: {}, value: {}", context.self.path.name, key, value)
         Behaviors.same
     }
   }

@@ -17,7 +17,7 @@ object User {
         Behaviors.same
       case WriteValue(key,value) =>
         context.log.info("{} received write request for key: {}, value: {}", context.self.path.name, key, value)
-        val writeResponse = request.postForm(Seq("name"->key,"val"->value)).option(HttpOptions.connTimeout(10000)).asString
+        val writeResponse = request.params(("name", key), ("val", value)).method("POST").option(HttpOptions.connTimeout(10000)).asString
         context.log.info2("key: {} Write response: {}", key, writeResponse.body.toString)
         Behaviors.same
     }
@@ -32,8 +32,8 @@ object UserSystem{
     )
     val router = context.spawn(pool,"users-pool")
 
-    router ! ReadKey("key")
-    router ! WriteValue("key","value")
+    router ! ReadKey("readmykey")
+    router ! WriteValue("mykey","myvalue")
 
 
     Behaviors.empty
