@@ -21,7 +21,7 @@ object User {
       case WriteValue(key,value) =>
         context.log.info("{} received write request for key: {}, value: {}", context.self.path.name, key, value)
         val writeResponse = request.postForm(Seq("name"->key,"val"->value)).asString
-        context.log.info2("key: {} Write response: {}", key, writeResponse.body.toString)
+        context.log.debug("key: {} Write response: {}", key, writeResponse.body.toString)
         Behaviors.same
       case _ =>
         Behaviors.unhandled
@@ -38,17 +38,19 @@ object UserSystem{
     val router = context.spawn(pool,"users-pool")
 
     val dataSource = Source.fromFile("src/main/resources/listfile.txt")
-    val data = dataSource.getLines.slice(0,UserConf.totalRecords)
-    val readData: List[String]  = data.slice(0,UserConf.recordsToRead).toList
-    val writeData: List[String] = data.slice(UserConf.recordsToRead,UserConf.totalRecords).toList
+    val data = dataSource.getLines.slice(0,UserConf.totalRecords).toList
+    val readData: List[String]  = data.slice(0,UserConf.recordsToRead)
+    val writeData: List[String] = data.slice(UserConf.recordsToRead,UserConf.totalRecords)
 
     var numRequest = 0
     while (numRequest < UserConf.totalRequest){
       if (Utils.randomlySelectRequestType()) {
+//        println("------ readData size : ",readData.size)
         val index = Utils.randomlySelectDataIndex(readData.size)
         router ! ReadKey(readData(index).split(',')(0))
       }
       else {
+//        println("------ writeData size : ",writeData.size)
         val index = Utils.randomlySelectDataIndex(writeData.size)
         val record = writeData(index).split(',')
         router ! WriteValue(record(0),record(1))
