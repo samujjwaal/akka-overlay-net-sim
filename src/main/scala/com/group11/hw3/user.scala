@@ -1,10 +1,8 @@
 package com.group11.hw3
 
 import akka.NotUsed
-import akka.actor.typed.scaladsl.LoggerOps
+import akka.actor.typed.scaladsl.{Behaviors, LoggerOps, Routers}
 import akka.actor.typed.{Behavior, SupervisorStrategy}
-import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
-import akka.actor.typed.scaladsl.{Behaviors, Routers}
 import scalaj.http._
 
 
@@ -14,12 +12,12 @@ object User {
     Behaviors.receiveMessage {
       case ReadKey(key) =>
         context.log.info2("{} received read request for key: {}", context.self.path.name, key)
-        val readResponse = request.param("name",key).asString
+        val readResponse = request.param("name",key).option(HttpOptions.connTimeout(10000)).asString
         context.log.info2("key: {} Read response: {}", key, readResponse.body.toString)
         Behaviors.same
       case WriteValue(key,value) =>
         context.log.info("{} received write request for key: {}, value: {}", context.self.path.name, key, value)
-        val writeResponse = request.postForm(Seq("name"->key,"val"->value)).asString
+        val writeResponse = request.postForm(Seq("name"->key,"val"->value)).option(HttpOptions.connTimeout(10000)).asString
         context.log.info2("key: {} Write response: {}", key, writeResponse.body.toString)
         Behaviors.same
     }

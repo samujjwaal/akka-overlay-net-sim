@@ -24,7 +24,8 @@ class akkaHttpServer {
 
     }
 
-    bindingFuture=Http().bindAndHandle(route, "localhost", 9000)
+    //bindingFuture=Http().bindAndHandle(route, "localhost", 9000)
+    bindingFuture = Http().newServerAt("localhost", 9000).bind(route)
   }
 
 }
