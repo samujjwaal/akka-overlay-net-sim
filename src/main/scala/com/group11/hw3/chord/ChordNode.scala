@@ -5,31 +5,33 @@ import java.util.concurrent.TimeUnit
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorSystem, Behavior}
 import akka.util.Timeout
-import com.group11.hw3.{DisplayNodeInfo, FindPredecessor, FindSuccessor, GetNodeIndex, NodeCommand}
+import com.group11.hw3._
 
 import scala.math.pow
 
 object ChordNode{
   val M = 30
   val ringSize: Int = pow(2,M).toInt
-//  var predecessor: ChordNode = this
-//  var successor: ChordNode = this
   private val fingerTable = new Array[Finger](M)
-  implicit val timeout: Timeout = Timeout(10, TimeUnit.SECONDS)
 
   def apply(nodeIndex: Int): Behavior[NodeCommand] = Behaviors.setup{ context =>
-      fingerTable.indices.foreach(i =>{
+
+    var predecessor = context.self
+    var successor = context.self
+    implicit val timeout: Timeout = Timeout(10, TimeUnit.SECONDS)
+
+    fingerTable.indices.foreach(i =>{
         val start = (nodeIndex + pow(2,i)).toInt % ringSize
-        fingerTable(i) = new Finger(start, this(nodeIndex))
+        fingerTable(i) = Finger(start, context.self)
       } )
 
       Behaviors.receiveMessage[NodeCommand]{
         case FindPredecessor(key) =>
-          context.log.info("predecessor {} was found",key)
+          context.log.info("predecessor {} was found at key {}",predecessor,key)
           Behaviors.same
 
         case FindSuccessor(key) =>
-          context.log.info("successor {} was found",key)
+          context.log.info("successor {} was found at key {}",successor,key)
           Behaviors.same
 
         case GetNodeIndex() =>
@@ -50,9 +52,7 @@ object ChordNode{
 object ChordSystem {
   def apply(): Behavior[NodeCommand] = Behaviors.setup { context =>
     val node = context.spawn(ChordNode(1),"Node_1")
-//    val node = new ChordNode(1)
-    val node2 = context.spawn(ChordNode(2),"Node_2")
-    println(node==node2)
+    node ! FindPredecessor("k")
     node ! FindSuccessor("k")
     node ! GetNodeIndex()
     node ! DisplayNodeInfo()
