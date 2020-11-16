@@ -6,6 +6,7 @@ import akka.actor.typed.{Behavior, SupervisorStrategy}
 import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.{Behaviors, Routers}
 import scalaj.http._
+import scala.io.Source
 
 
 object User {
@@ -22,6 +23,8 @@ object User {
         val writeResponse = request.postForm(Seq("name"->key,"val"->value)).asString
         context.log.info2("key: {} Write response: {}", key, writeResponse.body.toString)
         Behaviors.same
+      case _ =>
+        Behaviors.unhandled
     }
   }
 }
@@ -34,8 +37,24 @@ object UserSystem{
     )
     val router = context.spawn(pool,"users-pool")
 
-    router ! ReadKey("key")
-    router ! WriteValue("key","value")
+    val dataSource = Source.fromFile("src/main/resources/listfile.txt")
+    val data = dataSource.getLines.slice(0,UserConf.totalRecords)
+    val readData: List[String]  = data.slice(0,UserConf.recordsToRead).toList
+    val writeData: List[String] = data.slice(UserConf.recordsToRead,UserConf.totalRecords).toList
+
+    var numRequest = 0
+    while (numRequest < UserConf.totalRequest){
+      if (Utils.randomlySelectRequestType()) {
+        val index = Utils.randomlySelectDataIndex(readData.size)
+        router ! ReadKey(readData(index).split(',')(0))
+      }
+      else {
+        val index = Utils.randomlySelectDataIndex(writeData.size)
+        val record = writeData(index).split(',')
+        router ! WriteValue(record(0),record(1))
+      }
+      numRequest = numRequest + 1
+    }
 
 
     Behaviors.empty
