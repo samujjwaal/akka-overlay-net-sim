@@ -15,7 +15,7 @@ case class writeKeyValue(key: String, value: String) extends  NodeRequest
 
 
 
-case class FindNode(node: ActorRef)
+//case class FindNode(node: ActorRef)
 
 trait NodeCommand
 case class GetNodeIndex() extends NodeCommand
