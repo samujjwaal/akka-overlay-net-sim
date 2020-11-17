@@ -86,9 +86,9 @@ object ChordNode{
           updateFingerTable()
           Behaviors.same
 
-        case getKeyValue(key) =>
+        case getKeyValue(replyTo,key) =>
           context.log.info("{} received read request by NODE ACTOR for key: {}", context.self.path.name, key)
-          //replyTo ! Response("Dummy value!")
+          replyTo ! Response("Dummy value!")
           Behaviors.same
 
         case writeKeyValue(key,value) =>
