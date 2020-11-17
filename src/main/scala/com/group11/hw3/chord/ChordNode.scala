@@ -2,8 +2,12 @@ package com.group11.hw3.chord
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.util.Timeout
 import com.group11.hw3._
 import com.group11.hw3.utils.ChordUtils.md5
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 object ChordNode{
   val M = 30
@@ -35,7 +39,7 @@ object ChordNode{
 
     fingerTable.indices.foreach(i =>{
       val start:BigInt = (nodeHash + BigInt(2).pow(i)) % ringSize
-      fingerTable(i) = Finger(start, context.self)
+      fingerTable(i) = Finger(start, context.self, nodeHash)
     } )
 
 //    def this(){
@@ -48,7 +52,11 @@ object ChordNode{
 //      } )
 //    }
     def updateFingerTable(): Unit = {
-
+      fingerTable.indices.foreach ( i => {
+        val start:BigInt = (nodeHash + BigInt(2).pow(i)) % ringSize
+        val nextSuccessor = context.self
+        fingerTable(i) = Finger(start, context.self,nodeHash)
+      } )
     }
     override def onMessage(msg: NodeCommand): Behavior[NodeCommand] =
       msg match {
@@ -78,7 +86,7 @@ object ChordNode{
 
         case SetSuccessor(node) =>
           successor = node
-          fingerTable(0).node = node
+          fingerTable(0).nodeRef = node
           Behaviors.same
 
 
@@ -93,6 +101,12 @@ object ChordNode{
 
         case writeKeyValue(key,value) =>
           context.log.info("{} received write request by NODE ACTOR for key: {}, value: {}", context.self.path.name, key, value)
+          Behaviors.same
+
+        case JoinNetwork(networkRef,master) =>
+          // We assume network has at least one node and so, networkRef is not null
+          implicit val timeout = Timeout(10 seconds)
+
           Behaviors.same
         case _ =>
           Behaviors.unhandled

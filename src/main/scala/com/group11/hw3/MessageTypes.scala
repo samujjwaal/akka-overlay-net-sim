@@ -29,7 +29,7 @@ case class getKeyValue(node:ActorRef[NodeCommand],key: String) extends NodeComma
 case class writeKeyValue(key: String, value: String) extends  NodeCommand
 case class Response(message:String) extends NodeCommand
 case class FindSuccessor() extends NodeCommand
-
+case class JoinNetwork(networkRef: ActorRef[NodeCommand],master:ActorRef[ChordSystemCommand]) extends NodeCommand
 
 trait ChordSystemCommand
 case class UpdateFingerTables() extends ChordSystemCommand

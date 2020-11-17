@@ -11,6 +11,7 @@ import com.group11.hw3.utils.ChordUtils
 import com.group11.hw3.chord.{ChordNode, Finger}
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
@@ -19,18 +20,20 @@ object serverRedone {
   //private case class AdaptedResponse(message: String) extends ChordSystemCommand
   def apply(): Behavior[ChordSystemCommand] = Behaviors.setup { context =>
     var hashMap = new mutable.HashMap[BigInt,ActorRef[NodeCommand]]()
-    val nodeList = new Array[BigInt](11)
+    val nodeList = new ListBuffer[BigInt]()
 
     implicit val system:ActorSystem[NotUsed]=ActorSystem(Behaviors.empty,"http-server")
     implicit val executor: ExecutionContext = system.executionContext
 
     //Create nodes
-    for (i <- 0 to 10) {
+    while (nodeList.size < NodeConstants.numNodes) {
 
-      var hashID=ChordUtils.md5("N"+i)
-      nodeList(i)=hashID
-      var actRef=context.spawn(ChordNode(hashID),hashID.toString())
-      hashMap.addOne(hashID,actRef)
+      var hashID=ChordUtils.md5("N"+nodeList.size)
+      if (!(nodeList.contains(hashID))) {
+        nodeList += hashID
+        var actRef = context.spawn(ChordNode(hashID), hashID.toString())
+        hashMap.addOne(hashID, actRef)
+      }
     }
     val r = new scala.util.Random
     implicit val timeout: Timeout = 3.seconds
@@ -40,7 +43,7 @@ object serverRedone {
       concat(
         get {
           parameters("name".as[String]) { (key) =>
-            val index=r.nextInt(10)
+            val index=r.nextInt(NodeConstants.numNodes)
             val nodeHash=nodeList(index)
             val x=hashMap.get(nodeHash)
             var msgReply = ""
