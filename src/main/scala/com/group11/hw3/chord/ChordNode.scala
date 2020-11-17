@@ -1,50 +1,86 @@
 package com.group11.hw3.chord
 
-import java.util.concurrent.TimeUnit
-
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorSystem, Behavior}
-import akka.util.Timeout
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import com.group11.hw3._
-
-import scala.math.pow
+import com.group11.hw3.utils.ChordUtils.md5
 
 object ChordNode{
-  val M = NodeConstants.M
-  val ringSize: Int = pow(2,M).toInt
-  private val fingerTable = new Array[Finger](M)
+  val M = 30
+  val ringSize: BigInt = BigInt(2).pow(M)
+//  private val fingerTable = new Array[Finger](M)
+//  var predecessor: ActorRef[NodeCommand] = _
+//  var successor: ActorRef[NodeCommand] = _
 
-  def apply(nodeIndex: BigInt): Behavior[NodeCommand] = Behaviors.setup{ context =>
+  def apply(nodeHash: BigInt): Behavior[NodeCommand] = Behaviors.setup{ context =>
 
-    var predecessor = context.self
-    var successor = context.self
-    implicit val timeout: Timeout = Timeout(10, TimeUnit.SECONDS)
+//    predecessor = context.self
+//    successor = context.self
+//    val nodeHash = hash
+
+//    fingerTable.indices.foreach(i =>{
+//        val start:BigInt = (nodeHash + BigInt(2).pow(i)) % ringSize
+//        fingerTable(i) = Finger(start, context.self)
+//      } )
+
+    new ChordNodeBehavior(context, nodeHash)
+
+  }
+
+  class ChordNodeBehavior(context: ActorContext[NodeCommand], nodeHash: BigInt) extends AbstractBehavior[NodeCommand](context){
+
+    private val fingerTable = new Array[Finger](M)
+    var predecessor: ActorRef[NodeCommand] = context.self
+    var successor: ActorRef[NodeCommand] = context.self
 
     fingerTable.indices.foreach(i =>{
-        val start = (nodeIndex + pow(2,i).toInt).toInt % ringSize
-        fingerTable(i) = Finger(start, context.self)
-      } )
+      val start:BigInt = (nodeHash + BigInt(2).pow(i)) % ringSize
+      fingerTable(i) = Finger(start, context.self)
+    } )
 
-    def updateFingerTable() = {
+//    def this(){
+//      this(context,nodeHash)
+//      this.predecessor = context.self
+//      this.successor = context.self
+//      this.fingerTable.indices.foreach(i =>{
+//        val start:BigInt = (nodeHash + BigInt(2).pow(i)) % ringSize
+//        fingerTable(i) = Finger(start, context.self)
+//      } )
+//    }
+    def updateFingerTable(): Unit = {
 
     }
-      Behaviors.receiveMessage[NodeCommand]{
+    override def onMessage(msg: NodeCommand): Behavior[NodeCommand] =
+      msg match {
         case FindPredecessor(key) =>
           context.log.info("predecessor {} was found at key {}",predecessor,key)
           Behaviors.same
 
-        case FindSuccessor(key) =>
-          context.log.info("successor {} was found at key {}",successor,key)
+        case FindSuccessor() =>
+//          context.log.info("for node {} successor {}",context.self,this.successor)
+          println(s"for node ${context.self} successor ${this.successor}")
           Behaviors.same
 
         case GetNodeIndex() =>
-          context.log.info("Node index is {}",nodeIndex)
+          context.log.info("Node index is {}")
           Behaviors.same
 
         case DisplayNodeInfo() =>
-          fingerTable.foreach(i=>
-          println(i.start, i.node))
+          //          fingerTable.foreach(i=>
+          //          println(i.start, i.node))
+          println(context.self.path.name,fingerTable(0))
+          println(context.self.path.name,fingerTable(1))
+          println(context.self.path.name,fingerTable(2))
+          println(context.self.path.name,fingerTable(3))
+
+          println()
           Behaviors.same
+
+        case SetSuccessor(node) =>
+          successor = node
+          fingerTable(0).node = node
+          Behaviors.same
+
 
         case UpdateFingerTable() =>
           updateFingerTable()
@@ -61,22 +97,30 @@ object ChordNode{
         case _ =>
           Behaviors.unhandled
       }
-    }
   }
 }
 
 
 object ChordSystem {
   def apply(): Behavior[NodeCommand] = Behaviors.setup { context =>
-    val node = context.spawn(ChordNode(1),"Node_1")
-    val node2 = context.spawn(ChordNode(2),"Node_2")
-    node ! FindPredecessor("k")
-    node ! FindSuccessor("k")
-    node ! GetNodeIndex()
-    node2 ! FindPredecessor("k")
-    node2 ! FindSuccessor("k")
-    node2 ! GetNodeIndex()
-//    node ! DisplayNodeInfo()
+    val node1 = context.spawn(ChordNode(md5("Node1")),"Node1")
+    node1 ! DisplayNodeInfo()
+
+    Thread.sleep(100)
+
+    val node2 = context.spawn(ChordNode(md5("Node2")),"Node2")
+    node1 ! SetSuccessor(node2)
+    node1 ! FindSuccessor()
+    node2 ! DisplayNodeInfo()
+    node2 ! FindSuccessor()
+    Thread.sleep(100)
+    node1 ! DisplayNodeInfo()
+//    val node3 = context.spawn(ChordNode(md5("Node3")),"Node3")
+////    node2 ! SetSuccessor(node3)
+////    node2 ! FindSuccessor()
+//    node2 ! DisplayNodeInfo()
+//    val node4 = context.spawn(ChordNode(md5("Node4")),"Node4")
+//    node4 ! DisplayNodeInfo()
 
     Behaviors.empty
   }
