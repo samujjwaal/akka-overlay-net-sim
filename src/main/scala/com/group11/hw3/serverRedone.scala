@@ -15,8 +15,8 @@ import scala.concurrent.ExecutionContext
 object serverRedone {
 
   def apply(): Behavior[NotUsed] = Behaviors.setup { context =>
-    var hashMap = new mutable.HashMap[String,ActorRef[NodeRequest]]()
-    val nodeList = new Array[String](11)
+    var hashMap = new mutable.HashMap[BigInt,ActorRef[NodeRequest]]()
+    val nodeList = new Array[BigInt](11)
 
     implicit val system:ActorSystem[NotUsed]=ActorSystem(Behaviors.empty,"http-server")
     implicit val executor: ExecutionContext = system.executionContext
@@ -26,7 +26,7 @@ object serverRedone {
 
       var hashID=ChordUtils.md5("N"+i)
       nodeList(i)=hashID
-      var actRef=context.spawn(DummyNode(hashID),hashID)
+      var actRef=context.spawn(DummyNode(hashID),hashID.toString())
       hashMap.addOne(ChordUtils.md5("N"+i),actRef)
     }
     val r = new scala.util.Random
@@ -64,8 +64,8 @@ object serverRedone {
 
 object DummyNode {
   var DummyNodeServiceKey = ServiceKey[NodeRequest]("")
-  def apply(hash:String): Behavior[NodeRequest] = Behaviors.setup { context =>
-    DummyNodeServiceKey=ServiceKey[NodeRequest](hash)
+  def apply(hash:BigInt): Behavior[NodeRequest] = Behaviors.setup { context =>
+    DummyNodeServiceKey=ServiceKey[NodeRequest](hash.toString())
     context.system.receptionist ! Receptionist.Register(DummyNodeServiceKey, context.self)
 
     Behaviors.receiveMessage {
