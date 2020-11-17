@@ -10,7 +10,7 @@ trait NodeRequest
 case class FindNode(node: ActorRef[Nothing]) extends NodeRequest
 case class getKeyValue(key: String) extends NodeRequest
 case class writeKeyValue(key: String, value: String) extends  NodeRequest
-
+case class Response(message:String) extends NodeRequest
 
 
 
@@ -22,3 +22,8 @@ case class GetNodeIndex() extends NodeCommand
 case class DisplayNodeInfo() extends NodeCommand
 case class FindPredecessor(key: String) extends NodeCommand
 case class FindSuccessor(key: String) extends NodeCommand
+
+
+trait ChordSystemCommand
+case class UpdateFingerTables() extends ChordSystemCommand
+case class WriteInitialData() extends ChordSystemCommand
