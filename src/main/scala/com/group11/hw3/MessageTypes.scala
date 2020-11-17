@@ -18,18 +18,29 @@ case class WriteValue(key: String, value: String) extends DataRequest
 //case class FindNode(node: ActorRef)
 
 trait NodeCommand
+case class NodeAdaptedResponse() extends NodeCommand
 case class GetNodeIndex() extends NodeCommand
 case class DisplayNodeInfo() extends NodeCommand
-case class SetSuccessor(node: ActorRef[NodeCommand]) extends NodeCommand
-case class FindPredecessor(key: String) extends NodeCommand
 //case class FindSuccessor(key: String) extends NodeCommand
 case class FindNode(node: ActorRef[Nothing]) extends NodeCommand
 case class UpdateFingerTable() extends NodeCommand
 case class getKeyValue(node:ActorRef[NodeCommand],key: String) extends NodeCommand
 case class writeKeyValue(key: String, value: String) extends  NodeCommand
-case class Response(message:String) extends NodeCommand
-case class FindSuccessor() extends NodeCommand
+case class HttpResponse(message:String) extends NodeCommand
 case class JoinNetwork(networkRef: ActorRef[NodeCommand],master:ActorRef[ChordSystemCommand]) extends NodeCommand
+
+case class FindKeyPredecessor(ref: ActorRef[NodeCommand],key: BigInt) extends NodeCommand
+case class FindKeyPredResponse(predId: BigInt, predRef: ActorRef[NodeCommand]) extends NodeCommand
+
+case class FindKeySuccessor(ref: ActorRef[NodeCommand],key: BigInt) extends NodeCommand
+case class FindKeySuccResponse(succId: BigInt,succRef: ActorRef[NodeCommand], predId: BigInt, predRef: ActorRef[NodeCommand]) extends NodeCommand
+
+case class FindNodePredecessor(key: BigInt) extends NodeCommand
+case class SetNodePredecessor(nodeId: BigInt,nodeRef: ActorRef[NodeCommand]) extends NodeCommand
+
+case class SetNodeSuccessor(nodeId: BigInt,nodeRef: ActorRef[NodeCommand]) extends NodeCommand
+case class GetNodeSuccessor(ref: ActorRef[NodeCommand]) extends NodeCommand
+case class GetNodeSuccResponse(nodeId: BigInt, nodeRef: ActorRef[NodeCommand]) extends NodeCommand
 
 trait ChordSystemCommand
 case class UpdateFingerTables() extends ChordSystemCommand

@@ -54,7 +54,7 @@ object serverRedone {
 //            x.head ! buildRequest
             context.ask(x.head,buildRequest)
             {
-              case Success(Response(message)) => {
+              case Success(HttpResponse(message)) => {
                 msgReply = message
                 AdaptedResponse(msgReply)
               }
