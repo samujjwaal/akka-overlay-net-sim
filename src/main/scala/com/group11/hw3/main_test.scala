@@ -10,7 +10,7 @@ object main_test {
   def main(args: Array[String]): Unit = {
 
     ActorSystem(serverRedone(),"Chord-server-system")
-
+    Thread.sleep(2000)
     ActorSystem(UserSystem(),"Users")
 
   }

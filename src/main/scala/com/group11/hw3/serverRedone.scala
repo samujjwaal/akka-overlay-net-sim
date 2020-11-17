@@ -8,7 +8,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives.{complete, concat, get, path, post, _}
 import akka.util.Timeout
 import com.group11.hw3.utils.ChordUtils
-
+import com.group11.hw3.chord.{Finger,ChordNode}
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -16,7 +16,7 @@ import scala.concurrent.duration._
 object serverRedone {
   //private case class AdaptedResponse(message: String) extends ChordSystemCommand
   def apply(): Behavior[ChordSystemCommand] = Behaviors.setup { context =>
-    var hashMap = new mutable.HashMap[BigInt,ActorRef[NodeRequest]]()
+    var hashMap = new mutable.HashMap[BigInt,ActorRef[NodeCommand]]()
     val nodeList = new Array[BigInt](11)
 
     implicit val system:ActorSystem[NotUsed]=ActorSystem(Behaviors.empty,"http-server")
@@ -27,7 +27,7 @@ object serverRedone {
 
       var hashID=ChordUtils.md5("N"+i)
       nodeList(i)=hashID
-      var actRef=context.spawn(DummyNode(hashID),hashID.toString())
+      var actRef=context.spawn(ChordNode(hashID),hashID.toString())
       hashMap.addOne(ChordUtils.md5("N"+i),actRef)
     }
     val r = new scala.util.Random
@@ -84,16 +84,16 @@ object serverRedone {
 
 
 object DummyNode {
-  var DummyNodeServiceKey = ServiceKey[NodeRequest]("")
+//  var DummyNodeServiceKey = ServiceKey[NodeRequest]("")
 //  trait NodeRequest
 //  case class FindNode(node: ActorRef[Nothing]) extends NodeRequest
 //  case class getKeyValue(key: String,actorRef: ActorRef[Response]) extends NodeRequest
 //  case class writeKeyValue(key: String, value: String) extends  NodeRequest
 //  case class Response(message:String) extends NodeRequest
 
-  def apply(hash:BigInt): Behavior[NodeRequest] = Behaviors.setup { context =>
-    DummyNodeServiceKey=ServiceKey[NodeRequest](hash.toString())
-    context.system.receptionist ! Receptionist.Register(DummyNodeServiceKey, context.self)
+  def apply(hash:BigInt): Behavior[NodeCommand] = Behaviors.setup { context =>
+//    DummyNodeServiceKey=ServiceKey[NodeRequest](hash.toString())
+//    context.system.receptionist ! Receptionist.Register(DummyNodeServiceKey, context.self)
 
     Behaviors.receiveMessage {
       case getKeyValue(key) =>
