@@ -20,8 +20,9 @@ case class Response(message:String) extends NodeRequest
 trait NodeCommand
 case class GetNodeIndex() extends NodeCommand
 case class DisplayNodeInfo() extends NodeCommand
+case class SetSuccessor(node: ActorRef[NodeCommand]) extends NodeCommand
 case class FindPredecessor(key: String) extends NodeCommand
-case class FindSuccessor(key: String) extends NodeCommand
+case class FindSuccessor() extends NodeCommand
 
 
 trait ChordSystemCommand
