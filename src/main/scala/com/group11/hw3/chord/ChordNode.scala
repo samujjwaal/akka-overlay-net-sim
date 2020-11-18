@@ -7,6 +7,7 @@ import com.google.gson.JsonObject
 import com.group11.hw3._
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
@@ -55,43 +56,56 @@ object ChordNode{
 
     def findClosestPredInFT(key:BigInt):(ActorRef[NodeCommand],BigInt) =
     {
+      var resPredRef: ActorRef[NodeCommand] = selfRef
+      var resPredId: BigInt = nodeHash
       // If my hash is equal to the key, return my predecessor
       if (key == nodeHash) {
-        return (selfRef,nodeHash)
+        resPredRef = selfRef
+        resPredId = nodeHash
       }
-      // Go through the finger table and find closest finger pointing to a node preceding the key
-      for (i <- fingerTable.indices) {
-        var index = fingerTable.size - i -1
-        // check if we can form a seq nodeHash > finger node > key
-        // if yes, then return the node pointed by this finger
-        var currKey = key
-        var fingernode = fingerTable(index).nodeId
-        // Return the finger node if it matches the key
-        if (fingernode == currKey) {
-          return (fingerTable(index).nodeRef,fingerTable(index).nodeId)
-        }
-        if (currKey.<(nodeHash)) {
-          currKey = currKey + BigInt(2).pow(M)
-          if (fingernode.<=(nodeHash)) {
-            fingernode = fingernode + BigInt(2).pow(M)
+      else {
+        // Go through the finger table and find closest finger pointing to a node preceding the key
+        for (i <- fingerTable.indices) {
+          var index = fingerTable.size - i - 1
+          // check if we can form a seq nodeHash > finger node > key
+          // if yes, then return the node pointed by this finger
+          var currKey = key
+          var fingernode = fingerTable(index).nodeId
+          // Return the finger node if it matches the key
+          if (fingernode == currKey) {
+            resPredRef = fingerTable(index).nodeRef
+            resPredId = fingerTable(index).nodeId
           }
-        }
-        if (fingernode.>(nodeHash) && fingernode.<(currKey)) {
-          return (fingerTable(index).nodeRef,fingerTable(index).nodeId)
+          else {
+            if (currKey.<(nodeHash)) {
+              currKey = currKey + BigInt(2).pow(M)
+              if (fingernode.<=(nodeHash)) {
+                fingernode = fingernode + BigInt(2).pow(M)
+              }
+            }
+            if (fingernode.>(nodeHash) && fingernode.<(currKey)) {
+              resPredRef = fingerTable(index).nodeRef
+              resPredId = fingerTable(index).nodeId
+            }
+          }
         }
       }
       // If no closest node found in the finger table, return self
-      (selfRef,nodeHash)
+      (resPredRef,resPredId)
     }
 
     def findKeyPredecessor(key:BigInt): (ActorRef[NodeCommand], BigInt) = {
+      var resPredRef: ActorRef[NodeCommand] = selfRef
+      var resPredId: BigInt = nodeHash
       // If my hash is the same as key, return my predecessor
       if (key == nodeHash) {
-        return (predecessor, predecessorId)
+        resPredRef = predecessor
+        resPredId = predecessorId
       }
       // If key == my successor, return self
       if (key == successorId) {
-        return (selfRef, nodeHash)
+        resPredRef = selfRef
+        resPredId = nodeHash
       }
 
       // Check if the key lies between my hash and my successor's hash
@@ -105,7 +119,8 @@ object ChordNode{
       }
       // If key is in the interval, return self as the predecessor
       if (currentKey.>(nodeHash) && currentKey.<(succId)) {
-        return (selfRef, nodeHash)
+        resPredRef = selfRef
+        resPredId = nodeHash
       }
 
       // Check if key lies between my pred and my hash
@@ -119,12 +134,15 @@ object ChordNode{
       }
       // If key is in this interval, return my predecessor
       if (currentKey.>(predecessorId) && currentKey.<(myId)) {
-        return (predecessor, predecessorId)
+        resPredRef = predecessor
+        resPredId = predecessorId
       }
 
       // Find closest Id we can find in our finger table which lies before the key.
       val (closestPredRef, closestPredId) = findClosestPredInFT(key)
       // If we get a node other than self, we found a node closer to the key. Forward the req to get predecessor
+      resPredRef = closestPredRef
+      resPredId = closestPredId
       if (!(closestPredId == nodeHash)) {
         implicit val timeout: Timeout = Timeout(10.seconds)
 
@@ -132,10 +150,20 @@ object ChordNode{
 
         context.ask(closestPredRef, getKeyPred) {
           case Success(FindKeyPredResponse(predID, pred)) =>
-            return (pred, predID)
+//            println("---- FindKeyPredecessor ask call ----"+predID.toString)
+            resPredRef = pred
+            resPredId = predID
+            NodeAdaptedResponse()
+          case Failure(_) =>
+            println("Failed to get Key predecessor")
+            NodeAdaptedResponse()
         }
+        (resPredRef,resPredId)
       }
-      (closestPredRef, closestPredId)
+      else {
+        (resPredRef,resPredId)
+      }
+
     }
 
 
@@ -156,6 +184,10 @@ object ChordNode{
           replyTo ! GetNodeSnapshotResponse(nodeJson)
           Behaviors.same
 
+        case GetFingerTableStatus(replyTo) =>
+          replyTo ! FingerTableStatusResponse(getFingerTableStatus())
+          Behaviors.same
+
         case GetNodeSuccessor(replyTo) =>
           replyTo ! GetNodeSuccResponse(successorId,successor)
           Behaviors.same
@@ -174,12 +206,14 @@ object ChordNode{
 
         case FindKeyPredecessor(replyTo,key) =>
           val (predRef, predId) = findKeyPredecessor(key)
+//          println("inside FindKeyPredecessor. got "+predId.toString)
           replyTo ! FindKeyPredResponse(predId, predRef)
           Behaviors.same
 
         case FindKeySuccessor(replyTo,key) =>
           var succ: ActorRef[NodeCommand] = null
-          val (predRef,predID)=findKeyPredecessor(key)
+          val (predRef,predId)=findKeyPredecessor(key)
+//          println("inside FindKeySuccessor. Got pred "+predId.toString)
           if(predRef==selfRef)
             { // key if found between this node and it successor
               replyTo ! FindKeySuccResponse(successorId,successor,nodeHash,selfRef)
@@ -191,7 +225,10 @@ object ChordNode{
             context.ask(predRef,getNodeSucc)
             {
               case Success(GetNodeSuccResponse(succId,succ)) =>
-                replyTo ! FindKeySuccResponse(succId,succ,predID,predRef)
+                replyTo ! FindKeySuccResponse(succId,succ,predId,predRef)
+                NodeAdaptedResponse()
+              case Failure(_) =>
+                println("Failed to get Node Successor")
                 NodeAdaptedResponse()
             }
           }
@@ -249,62 +286,67 @@ object ChordNode{
           context.ask(networkRef,askForKeySucc)
           {
             case Success(FindKeySuccResponse(succId,succRef,predId,predRef)) => {
+              println("--- Finding succ --- Node :"+nodeHash.toString+" succ : "+succId.toString)
               fingerTable(0).nodeRef = succRef
               fingerTable(0).nodeId = succId
               successor = succRef
               successorId = succId
               predecessor = predRef
               predecessorId = predId
+              successor ! SetNodePredecessor(nodeHash,selfRef)
+              predecessor ! SetNodeSuccessor(nodeHash,selfRef)
+//              println(getFingerTableStatus())
+              // Set the Finger table with current nodes in the network
+//              var gotFingerNode = new ListBuffer[Int]()
+//              gotFingerNode += 1
+              for (i <- 1 until M) {
+
+                var lastSucc = fingerTable(i-1).nodeId
+                var curStart = fingerTable(i).start
+                if (lastSucc.<(nodeHash)) {
+                  lastSucc = lastSucc + BigInt(2).pow(M)
+                  if (curStart.>(nodeHash) && curStart.<(nodeHash)) {
+                    curStart = curStart + BigInt(2).pow(M)
+                  }
+                }
+                if (lastSucc.>(nodeHash) && lastSucc.>=(curStart)) {
+                  fingerTable(i).nodeId = fingerTable(i-1).nodeId
+                  fingerTable(i).nodeRef = fingerTable(i-1).nodeRef
+//                  gotFingerNode += 1
+                }
+                else {
+                  def askForNextKeySucc(ref:ActorRef[NodeCommand]) = FindKeySuccessor(ref,curStart)
+                  context.ask(networkRef,askForNextKeySucc) {
+                    case Success(FindKeySuccResponse(succId,succRef,predId,predRef)) => {
+//                      gotFingerNode(i) += 1
+                      fingerTable(i).nodeRef = succRef
+                      fingerTable(i).nodeId = succId
+                      NodeAdaptedResponse()
+                    }
+                    case Failure(_) => {
+                      fingerTable(i).nodeRef = selfRef
+                      fingerTable(i).nodeId = nodeHash
+                      NodeAdaptedResponse()
+                    }
+                  }
+                }
+              }
+//              Thread.sleep(10)
+//              while (gotFingerNode.size < M) {
+//                Thread.sleep((1))
+//              }
+              updateFingerTablesOfOthers()
+              context.log.info("{} added to chord network",nodeHash)
+
+//              context.log.info("Fingertable for {} => {}",nodeHash,getFingerTableStatus())
+              replyTo ! JoinStatus("Success")
               NodeAdaptedResponse()
             }
             case Failure(_) => {
-              fingerTable(0).nodeRef = selfRef
-              fingerTable(0).nodeId = nodeHash
-              successor = selfRef
-              successorId = nodeHash
-              predecessor = selfRef
-              predecessorId = nodeHash
+              replyTo ! JoinStatus("Failed")
               NodeAdaptedResponse()
             }
           }
-          successor ! SetNodePredecessor(nodeHash,selfRef)
-          predecessor ! SetNodeSuccessor(nodeHash,selfRef)
-
-          // Set the Finger table with current nodes in the network
-          for (i <- 1 until M) {
-            var lastSucc = fingerTable(i-1).nodeId
-            var curStart = fingerTable(i).start
-            if (lastSucc.<(nodeHash)) {
-              lastSucc = lastSucc + BigInt(2).pow(M)
-              if (curStart.>(nodeHash) && curStart.<(nodeHash)) {
-                curStart = curStart + BigInt(2).pow(M)
-              }
-            }
-            if (lastSucc.>=(curStart)) {
-              fingerTable(i).nodeId = fingerTable(i-1).nodeId
-              fingerTable(i).nodeRef = fingerTable(i-1).nodeRef
-            }
-            else {
-              def askForNextKeySucc(ref:ActorRef[NodeCommand]) = FindKeySuccessor(ref,curStart)
-              context.ask(networkRef,askForNextKeySucc) {
-                case Success(FindKeySuccResponse(succId,succRef,predId,predRef)) => {
-                  fingerTable(i).nodeRef = succRef
-                  fingerTable(i).nodeId = succId
-                  NodeAdaptedResponse()
-                }
-                case Failure(_) => {
-                  fingerTable(i).nodeRef = selfRef
-                  fingerTable(i).nodeId = nodeHash
-                  NodeAdaptedResponse()
-                }
-              }
-            }
-          }
-          updateFingerTablesOfOthers()
-          context.log.info("{} added to chord network",nodeHash)
-
-          context.log.info("Fingertable for {} => {}",nodeHash,getFingerTableStatus())
-          replyTo ! JoinStatus("Success")
           Behaviors.same
 
         case NodeAdaptedResponse() =>
