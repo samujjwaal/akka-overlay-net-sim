@@ -21,6 +21,7 @@ object serverRedone {
   def apply(): Behavior[ChordSystemCommand] = Behaviors.setup { context =>
     var hashMap = new mutable.HashMap[BigInt,ActorRef[NodeCommand]]()
     val nodeList = new ListBuffer[BigInt]()
+    var nodesInChord = new ListBuffer[ActorRef[NodeCommand]]()
 
     implicit val system:ActorSystem[NotUsed]=ActorSystem(Behaviors.empty,"http-server")
     implicit val executor: ExecutionContext = system.executionContext
@@ -32,9 +33,29 @@ object serverRedone {
       if (!(nodeList.contains(hashID))) {
         nodeList += hashID
         var actRef = context.spawn(ChordNode(hashID), hashID.toString())
+        Thread.sleep(10)
         hashMap.addOne(hashID, actRef)
       }
     }
+
+    // Add nodes to Network
+    // Assuming first node starts Network and is self references
+    nodesInChord += hashMap(nodeList(0))
+    for (i <- 1 until nodeList.size) {
+      var randomNodeInNetwork = hashMap(nodeList(scala.util.Random.nextInt(i)))
+      var joinStatus = ""
+      def askNodeToJoinNetwork(ref:ActorRef[NodeCommand]) = JoinNetwork(ref,randomNodeInNetwork)
+      context.ask(hashMap(nodeList(i)),askNodeToJoinNetwork) {
+        case Success(JoinStatus(status)) =>
+          joinStatus = status
+          AdaptedResponse(status)
+      }
+      if (joinStatus == "Success") {
+        context.log.info("Node {} joined the network",hashMap(nodeList(i)).toString)
+        Thread.sleep(100)
+      }
+    }
+
     val r = new scala.util.Random
     implicit val timeout: Timeout = 3.seconds
 
