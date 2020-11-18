@@ -5,7 +5,6 @@ import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.util.Timeout
 import com.group11.hw3._
 import com.group11.hw3.utils.ChordUtils.md5
-import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -61,15 +60,46 @@ object ChordNode{
     def updateFingerTablesOfOthers(): Unit = {
 
     }
+
+    def findPredecessor(identifier:BigInt) =
+    {
+      var predNode = selfRef;
+      var predNodeID: BigInt = nodeHash
+
+      (predNode,predNodeID)
+    }
     override def onMessage(msg: NodeCommand): Behavior[NodeCommand] =
       msg match {
+        case GetKeySuccessor(replyTo) =>
+          replyTo ! GetKeySuccessorResponse(successorId,successor)
+          Behaviors.same
+
         case FindKeyPredecessor(replyTo,key) =>
-//          context.log.info("predecessor {} was found at key {}",predecessor,key)
           Behaviors.same
 
         case FindKeySuccessor(replyTo,key) =>
-//          context.log.info("for node {} successor {}",context.self,this.successor)
-//          println(s"for node ${context.self} successor ${this.successor}")
+
+          var succ: ActorRef[NodeCommand] = null;
+          var (pred,predID)=findPredecessor(key)
+          if(pred==selfRef)
+            {
+              succ=successor
+              replyTo ! FindKeySuccResponse(successorId,succ,predID,pred)
+            }
+          else
+          {
+            implicit val timeout = Timeout(10 seconds)
+            def getKeySucc(ref:ActorRef[NodeCommand]) = GetKeySuccessor(ref)
+            context.ask(pred,getKeySucc)
+            {
+              case Success(GetKeySuccessorResponse(successorId_,successor)) =>
+                succ=successor
+                replyTo ! FindKeySuccResponse(successorId_,succ,predID,pred)
+                NodeAdaptedResponse()
+            }
+
+          }
+
 
           Behaviors.same
 
