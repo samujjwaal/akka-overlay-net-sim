@@ -37,15 +37,12 @@ case class FindKeyPredResponse(predId: BigInt, predRef: ActorRef[NodeCommand]) e
 case class FindKeySuccessor(ref: ActorRef[NodeCommand],key: BigInt) extends NodeCommand
 case class FindKeySuccResponse(succId: BigInt,succRef: ActorRef[NodeCommand], predId: BigInt, predRef: ActorRef[NodeCommand]) extends NodeCommand
 
-case class FindNodePredecessor(key: BigInt) extends NodeCommand
+case class GetNodePredecessor(key: BigInt) extends NodeCommand
 case class SetNodePredecessor(nodeId: BigInt,nodeRef: ActorRef[NodeCommand]) extends NodeCommand
 
 case class SetNodeSuccessor(nodeId: BigInt,nodeRef: ActorRef[NodeCommand]) extends NodeCommand
 case class GetNodeSuccessor(ref: ActorRef[NodeCommand]) extends NodeCommand
 case class GetNodeSuccResponse(nodeId: BigInt, nodeRef: ActorRef[NodeCommand]) extends NodeCommand
-
-case class CallFindPredecessor(ref: ActorRef[NodeCommand],key: BigInt) extends NodeCommand
-case class CallFindPredResponse(predId: BigInt, predRef: ActorRef[NodeCommand]) extends NodeCommand
 
 
 trait ChordSystemCommand
