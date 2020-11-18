@@ -195,8 +195,40 @@ object ChordNode{
           predecessorId = id
           Behaviors.same
 
-        case UpdateFingerTable(ref,id,index,key) =>
-//          updateFingerTable()
+        case UpdateFingerTable(ref,id,i,key) =>
+          // Check if the candidate node is between ith start and ith finger node
+
+          var ithFingerId = fingerTable(i).nodeId
+          var candidateId = id
+          // Check for Zero crossover between candidate node and current ith finger node
+          if (ithFingerId.<(nodeHash)) {
+            ithFingerId = ithFingerId + BigInt(2).pow(M)
+            if (candidateId.<(nodeHash)) {
+              candidateId = candidateId + BigInt(2).pow(M)
+            }
+          }
+          if (candidateId.>(nodeHash) && ithFingerId.>(candidateId)) {
+            // Check for Zero crossover between candidate node and ith finger start
+            var ithStart = fingerTable(i).start
+            candidateId = id
+            if (candidateId.<(nodeHash)) {
+              candidateId = candidateId + BigInt(2).pow(M)
+              if (ithStart.<(nodeHash)) {
+                ithStart = ithStart + BigInt(2).pow(M)
+              }
+            }
+            if (ithStart.>(nodeHash) && ithStart.<(candidateId)) {
+              fingerTable(i).nodeId = id
+              fingerTable(i).nodeRef = ref
+              // Also check if successor needs to be updated
+              if (i == 0) {
+                successorId = id
+                successor = ref
+              }
+            }
+            predecessor ! UpdateFingerTable(ref,id,i,key)
+          }
+
           Behaviors.same
 
         case getKeyValue(replyTo,key) =>
