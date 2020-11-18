@@ -3,6 +3,7 @@ package com.group11.hw3.chord
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.util.Timeout
+import com.google.gson.JsonObject
 import com.group11.hw3._
 import com.group11.hw3.utils.ChordUtils.md5
 
@@ -133,6 +134,20 @@ object ChordNode{
         case CallFindPredecessor(replyTo, key)=>
           val (predNode1, predNodeID1) = findKeyPredecessor(key)
           replyTo ! CallFindPredResponse(predNodeID1, predNode1)
+          Behaviors.same
+
+        case GetNodeSnapshot(replyTo) =>
+          val fingerJson: JsonObject = new JsonObject
+          for (i <- fingerTable.indices) {
+            fingerJson.addProperty(i.toString, fingerTable(i).nodeId)
+          }
+          val nodeJson: JsonObject = new JsonObject
+          nodeJson.addProperty("Node", nodeHash)
+          nodeJson.addProperty("Successor", successor.path.name)
+          nodeJson.addProperty("Predecessor", predecessor.path.name)
+          nodeJson.addProperty("KeyValuePairs", nodeData.size)
+          nodeJson.add("Fingers", fingerJson)
+          replyTo ! GetNodeSnapshotResponse(nodeJson)
           Behaviors.same
 
         case GetNodeSuccessor(replyTo) =>

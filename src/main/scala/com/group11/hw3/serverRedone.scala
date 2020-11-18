@@ -1,14 +1,15 @@
 package com.group11.hw3
-
+import java.io.File
+import org.apache.commons.io.FileUtils
 import akka.NotUsed
-import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives.{complete, concat, get, path, post, _}
 import akka.util.Timeout
+import com.google.gson.{GsonBuilder, JsonObject}
+import com.group11.hw3.chord.ChordNode
 import com.group11.hw3.utils.ChordUtils
-import com.group11.hw3.chord.{ChordNode, Finger}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -25,6 +26,8 @@ object serverRedone {
 
     implicit val system:ActorSystem[NotUsed]=ActorSystem(Behaviors.empty,"http-server")
     implicit val executor: ExecutionContext = system.executionContext
+    val r = new scala.util.Random
+    implicit val timeout: Timeout = 3.seconds
 
     //Create nodes
     while (nodeList.size < NodeConstants.numNodes) {
@@ -56,8 +59,7 @@ object serverRedone {
       }
     }
 
-    val r = new scala.util.Random
-    implicit val timeout: Timeout = 3.seconds
+
 
     //Define and start http server
     val route = path("placeholder") {
@@ -101,12 +103,41 @@ object serverRedone {
     }
     val bindingFuture = Http().newServerAt("localhost", 9000).bind(route)
 
+
+
     Behaviors.receiveMessage[ChordSystemCommand] {
 
       case UpdateFingerTables() =>
         Behaviors.same
 
       case WriteInitialData() =>
+        Behaviors.same
+
+      case CaptureGlobalSnapshot() =>
+        val gson=new GsonBuilder().setPrettyPrinting().create()
+        val nodesSnapshot = new JsonObject()
+
+        for(node <- nodeList)
+          {
+            def buildRequestForSnapshot(ref:ActorRef[NodeCommand]) =
+              GetNodeSnapshot(ref)
+
+            val nodeRef=hashMap.get(node).head
+
+            context.ask(nodeRef,buildRequestForSnapshot){
+              case Success(GetNodeSnapshotResponse(snap:JsonObject))=> {
+                nodesSnapshot.add("Node %s".format(nodeRef),snap)
+                AdaptedResponse("Success")
+              }
+              case Failure(_) => {
+                context.log.info("Failed to get snapshot form node")
+                AdaptedResponse("Fail")
+              }
+            }
+
+          }
+        val path = "output/%s.json".format("/Snapshot/Nodes")
+        FileUtils.write(new File(path), gson.toJson(nodesSnapshot), "UTF-8")
         Behaviors.same
     }
     Behaviors.empty

@@ -1,6 +1,7 @@
 package com.group11.hw3
 
 import akka.actor.typed.ActorRef
+import com.google.gson.JsonObject
 
 trait DataRequest
 case class ReadKey(key: String) extends DataRequest
@@ -47,8 +48,12 @@ case class GetNodeSuccResponse(nodeId: BigInt, nodeRef: ActorRef[NodeCommand]) e
 case class CallFindPredecessor(ref: ActorRef[NodeCommand],key: BigInt) extends NodeCommand
 case class CallFindPredResponse(predId: BigInt, predRef: ActorRef[NodeCommand]) extends NodeCommand
 
+case class GetNodeSnapshot(ref:ActorRef[NodeCommand]) extends  NodeCommand
+case class GetNodeSnapshotResponse(snap:JsonObject) extends  NodeCommand
+
 
 trait ChordSystemCommand
 case class UpdateFingerTables() extends ChordSystemCommand
 case class WriteInitialData() extends ChordSystemCommand
 case class AdaptedResponse(msg: String) extends ChordSystemCommand
+case class CaptureGlobalSnapshot() extends ChordSystemCommand
