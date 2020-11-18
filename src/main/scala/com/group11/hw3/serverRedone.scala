@@ -31,7 +31,7 @@ object serverRedone {
     implicit val timeout: Timeout = 3.seconds
 
     //Create nodes
-    while (nodeList.size < NodeConstants.numNodes) {
+    while (nodeList.size <= NodeConstants.numNodes) {
 
       var hashID=ChordUtils.md5("N"+nodeList.size)
       if (!(nodeList.contains(hashID))) {
@@ -63,7 +63,7 @@ object serverRedone {
 
 
     //Define and start http server
-    val route = path("placeholder") {
+    val route = path("chordRoot") {
       concat(
         get {
           parameters("name".as[String]) { (key) =>
@@ -92,7 +92,7 @@ object serverRedone {
         },
         post {
           parameters("name".as[String],"val".as[String]) { (key,value) =>
-            val index=r.nextInt(10)
+            val index=r.nextInt(NodeConstants.numNodes)
             val nodeHash=nodeList(index)
             val x=hashMap.get(nodeHash)
             x.head ! writeKeyValue(key,value)
