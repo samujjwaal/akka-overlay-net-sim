@@ -20,6 +20,10 @@ import scala.util.{Failure, Success}
 
 object serverRedone {
   //private case class AdaptedResponse(message: String) extends ChordSystemCommand
+  private case class AdaptedDataResponse(msg: String) extends ChordSystemCommand
+  private case class AdaptedJoinResponse(msg: String,nodeId: BigInt) extends ChordSystemCommand
+  private case class AdaptedSnapshotResponse(msg: String) extends ChordSystemCommand
+
   def apply(): Behavior[ChordSystemCommand] = Behaviors.setup { context =>
     var hashMap = new mutable.HashMap[BigInt,ActorRef[NodeCommand]]()
     val nodeList = new ListBuffer[BigInt]()
@@ -31,7 +35,7 @@ object serverRedone {
     implicit val timeout: Timeout = 3.seconds
 
     //Create nodes
-    while (nodeList.size <= NodeConstants.numNodes) {
+    while (nodeList.size < NodeConstants.numNodes) {
 
       var hashID=ChordUtils.md5("N"+nodeList.size)
       if (!(nodeList.contains(hashID))) {
@@ -43,15 +47,19 @@ object serverRedone {
     }
 
     // Add nodes to Network
-    // Assuming first node starts Network and is self references
+    // Assuming first node starts Network and is self referenced
     nodesInChord += hashMap(nodeList(0))
+//    println(nodesInChord)
     for (i <- 1 until nodeList.size) {
-      var randomNodeInNetwork = hashMap(nodeList(scala.util.Random.nextInt(i)))
+      val randomIndex = scala.util.Random.nextInt(i)
+//      println(randomIndex)
+      val randomNodeInNetwork = hashMap(nodeList(randomIndex))
 
       def askNodeToJoinNetwork(ref:ActorRef[JoinStatus]) = JoinNetwork(ref,randomNodeInNetwork)
 
       context.ask(hashMap(nodeList(i)),askNodeToJoinNetwork) {
         case Success(JoinStatus(status)) =>
+//          println(status)
           AdaptedJoinResponse(status,nodeList(i))
         case Failure(_) =>
           AdaptedJoinResponse("Join Failed!",nodeList(i))
@@ -109,6 +117,7 @@ object serverRedone {
         Behaviors.same
 
       case AdaptedJoinResponse(msg,nodeId) =>
+//        println("Join status for node : {} --- Status : {}",nodeId,msg)
         context.log.info("Join status for node : {} --- Status : {}",nodeId,msg).toString
         Behaviors.same
 
@@ -144,12 +153,11 @@ object serverRedone {
         val path = "output/%s.json".format("/Snapshot/Nodes")
         FileUtils.write(new File(path), gson.toJson(nodesSnapshot), "UTF-8")
         Behaviors.same
+
+      case _ =>
+        Behaviors.same
     }
-    Behaviors.empty
   }
-
-
-
 }
 
 

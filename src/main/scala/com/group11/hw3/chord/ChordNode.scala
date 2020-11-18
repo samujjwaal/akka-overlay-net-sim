@@ -34,6 +34,17 @@ object ChordNode{
       fingerTable(i) = Finger(start, selfRef, nodeHash)
     } )
 
+    println("Node Created : "+nodeHash.toString+" Initial Finger table on node creation : "+getFingerTableStatus())
+
+    def getFingerTableStatus(): String = {
+      var fingerTableStatus = "[ "
+      for (finger <- fingerTable) {
+        fingerTableStatus = fingerTableStatus+"( "+finger.start.toString+" : "+finger.nodeId.toString+" ), "
+      }
+      fingerTableStatus = fingerTableStatus + "]"
+      fingerTableStatus
+    }
+
     def updateFingerTablesOfOthers(): Unit = {
       for (i <- 0 until M) {
         var p = (nodeHash - BigInt(2).pow(i) + BigInt(2).pow(M) + 1) % BigInt(2).pow(M)
@@ -290,8 +301,9 @@ object ChordNode{
             }
           }
           updateFingerTablesOfOthers()
-          context.log.info("{} added to chord network",selfRef)
-          context.log.info("Fingertable for {} => {}",selfRef.path.name,fingerTable.mkString(","))
+          context.log.info("{} added to chord network",nodeHash)
+
+          context.log.info("Fingertable for {} => {}",nodeHash,getFingerTableStatus())
           replyTo ! JoinStatus("Success")
           Behaviors.same
 
