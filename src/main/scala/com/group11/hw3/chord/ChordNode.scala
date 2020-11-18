@@ -9,6 +9,7 @@ import com.group11.hw3.utils.ChordUtils.md5
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
+import scala.collection.mutable
 
 object ChordNode{
   val M = 30
@@ -40,6 +41,7 @@ object ChordNode{
     var successor: ActorRef[NodeCommand] = selfRef
     var predecessorId: BigInt = nodeHash
     var successorId: BigInt = nodeHash
+    var nodeData = new mutable.HashMap[BigInt,Int]()
 
     fingerTable.indices.foreach(i =>{
       val start:BigInt = (nodeHash + BigInt(2).pow(i)) % ringSize
@@ -55,12 +57,8 @@ object ChordNode{
 //        fingerTable(i) = Finger(start, context.self)
 //      } )
 //    }
-    def updateFingerTable(): Unit = {
-      fingerTable.indices.foreach ( i => {
-        val start:BigInt = (nodeHash + BigInt(2).pow(i)) % ringSize
-        val nextSuccessor = context.self
-        fingerTable(i) = Finger(start, selfRef,nodeHash)
-      } )
+    def updateFingerTablesOfOthers(): Unit = {
+
     }
 
     def findClosestPreceedingId(Identifier:BigInt, predRef:ActorRef[NodeCommand],nodeID:BigInt,call:String):(ActorRef[NodeCommand],BigInt) =
@@ -145,7 +143,7 @@ object ChordNode{
           Behaviors.same
 
         case UpdateFingerTable() =>
-          updateFingerTable()
+//          updateFingerTable()
           Behaviors.same
 
         case getKeyValue(replyTo,key) =>
@@ -157,39 +155,66 @@ object ChordNode{
           context.log.info("{} received write request by NODE ACTOR for key: {}, value: {}", context.self.path.name, key, value)
           Behaviors.same
 
-        case JoinNetwork(networkRef,master) =>
+        case JoinNetwork(replyTo,networkRef) =>
           // We assume network has at least one node and so, networkRef is not null
-          implicit val timeout = Timeout(10 seconds)
+          implicit val timeout = Timeout(5 seconds)
           def askForKeySucc(ref:ActorRef[NodeCommand]) = FindKeySuccessor(ref,fingerTable(0).start)
-          var succId = BigInt(0)
-          var predId = BigInt(0)
-          var succRef: ActorRef[NodeCommand] = null
-          var predRef: ActorRef[NodeCommand] = null
           context.ask(networkRef,askForKeySucc)
           {
-            case Success(FindKeySuccResponse(succId_,succRef_,predId_,predRef_)) => {
-              succId = succId_
-              predId = predId_
-              succRef = succRef_
-              predRef = predRef_
+            case Success(FindKeySuccResponse(succId,succRef,predId,predRef)) => {
+              fingerTable(0).nodeRef = succRef
+              fingerTable(0).nodeId = succId
+              successor = succRef
+              successorId = succId
+              predecessor = predRef
+              predecessorId = predId
               NodeAdaptedResponse()
             }
             case Failure(_) => {
-              succId = nodeHash
-              predId = nodeHash
-              succRef = selfRef
-              predRef = selfRef
+              fingerTable(0).nodeRef = selfRef
+              fingerTable(0).nodeId = nodeHash
+              successor = selfRef
+              successorId = nodeHash
+              predecessor = selfRef
+              predecessorId = nodeHash
               NodeAdaptedResponse()
             }
           }
-          fingerTable(0).nodeRef = succRef
-          fingerTable(0).nodeId = succId
-          successor = succRef
-          successorId = succId
-          predecessor = predRef
-          predecessorId = predId
           successor ! SetNodePredecessor(nodeHash,selfRef)
           predecessor ! SetNodeSuccessor(nodeHash,selfRef)
+
+          // Set the Finger table with current nodes in the network
+          for (i <- 1 until M) {
+            var lastSucc = fingerTable(i-1).nodeId
+            var curStart = fingerTable(i).start
+            if (lastSucc.<(nodeHash)) {
+              lastSucc = lastSucc + BigInt(2).pow(M)
+              if (curStart.<(nodeHash)) {
+                curStart = curStart + BigInt(2).pow(M)
+              }
+            }
+            if (lastSucc.>=(curStart)) {
+              fingerTable(i).nodeId = fingerTable(i-1).nodeId
+              fingerTable(i).nodeRef = fingerTable(i-1).nodeRef
+            }
+            else {
+              def askForNextKeySucc(ref:ActorRef[NodeCommand]) = FindKeySuccessor(ref,curStart)
+              context.ask(networkRef,askForNextKeySucc) {
+                case Success(FindKeySuccResponse(succId,succRef,predId,predRef)) => {
+                  fingerTable(i).nodeRef = succRef
+                  fingerTable(i).nodeId = succId
+                  NodeAdaptedResponse()
+                }
+                case Failure(_) => {
+                  fingerTable(i).nodeRef = selfRef
+                  fingerTable(i).nodeId = nodeHash
+                  NodeAdaptedResponse()
+                }
+              }
+            }
+          }
+          updateFingerTablesOfOthers()
+          replyTo ! JoinStatus("Success")
 
           Behaviors.same
 

@@ -27,7 +27,9 @@ case class UpdateFingerTable() extends NodeCommand
 case class getKeyValue(node:ActorRef[NodeCommand],key: String) extends NodeCommand
 case class writeKeyValue(key: String, value: String) extends  NodeCommand
 case class HttpResponse(message:String) extends NodeCommand
-case class JoinNetwork(networkRef: ActorRef[NodeCommand],master:ActorRef[ChordSystemCommand]) extends NodeCommand
+
+case class JoinNetwork(master:ActorRef[NodeCommand],networkRef: ActorRef[NodeCommand]) extends NodeCommand
+case class JoinStatus(status: String) extends NodeCommand
 
 case class FindKeyPredecessor(ref: ActorRef[NodeCommand],key: BigInt) extends NodeCommand
 case class FindKeyPredResponse(predId: BigInt, predRef: ActorRef[NodeCommand]) extends NodeCommand
