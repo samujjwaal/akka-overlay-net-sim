@@ -1,37 +1,22 @@
 package com.group11.hw3.chord
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.util.Timeout
 import com.google.gson.JsonObject
 import com.group11.hw3._
-import com.group11.hw3.utils.ChordUtils.md5
 
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
-import scala.collection.mutable
 
 object ChordNode{
-  val M = 30
+  val M = NodeConstants.M
   val ringSize: BigInt = BigInt(2).pow(M)
-//  private val fingerTable = new Array[Finger](M)
-//  var predecessor: ActorRef[NodeCommand] = _
-//  var successor: ActorRef[NodeCommand] = _
 
   def apply(nodeHash: BigInt): Behavior[NodeCommand] = Behaviors.setup{ context =>
-
-//    predecessor = context.self
-//    successor = context.self
-//    val nodeHash = hash
-
-//    fingerTable.indices.foreach(i =>{
-//        val start:BigInt = (nodeHash + BigInt(2).pow(i)) % ringSize
-//        fingerTable(i) = Finger(start, context.self)
-//      } )
-
     new ChordNodeBehavior(context, nodeHash)
-
   }
 
   class ChordNodeBehavior(context: ActorContext[NodeCommand], nodeHash: BigInt) extends AbstractBehavior[NodeCommand](context){
@@ -49,15 +34,6 @@ object ChordNode{
       fingerTable(i) = Finger(start, selfRef, nodeHash)
     } )
 
-//    def this(){
-//      this(context,nodeHash)
-//      this.predecessor = context.self
-//      this.successor = context.self
-//      this.fingerTable.indices.foreach(i =>{
-//        val start:BigInt = (nodeHash + BigInt(2).pow(i)) % ringSize
-//        fingerTable(i) = Finger(start, context.self)
-//      } )
-//    }
     def updateFingerTablesOfOthers(): Unit = {
       for (i <- 0 until M) {
         var p = (nodeHash - BigInt(2).pow(i) + BigInt(2).pow(M) + 1) % BigInt(2).pow(M)
@@ -66,18 +42,16 @@ object ChordNode{
       }
     }
 
-    def findClosestPreceedingId(identifier:BigInt, predRef:ActorRef[NodeCommand],nodeID:BigInt,call:String):(ActorRef[NodeCommand],BigInt) =
+    def findClosestPreceedingId(identifier:BigInt, predRef:ActorRef[NodeCommand],nodeID:BigInt,callType:String):(ActorRef[NodeCommand],BigInt) =
     {
       var predNode = selfRef;
       var predNodeID: BigInt = nodeHash
-
-      call match {
+      callType match {
         case "Join" =>
           if (identifier == nodeID) {
             return (predecessor, predecessorId)
           }
           for (i <- M - 1 to 0 by -1) {
-
             var intervalEnd = identifier
             var valueToFind = fingerTable(i).start
             if (identifier.<=(nodeID)) {
@@ -86,17 +60,14 @@ object ChordNode{
                 valueToFind = fingerTable(i).nodeId + Math.pow(2, M).toInt
               }
             }
-
             if (valueToFind.>(nodeID) && valueToFind.<(intervalEnd)) {
               return (fingerTable(i).nodeRef, fingerTable(i).nodeId)
             }
-
           }
-
       }
-
       (predNode,predNodeID)
     }
+
     def findKeyPredecessor(identifier:BigInt): (ActorRef[NodeCommand], BigInt) =
     {
       var predNode = selfRef
@@ -116,9 +87,9 @@ object ChordNode{
 
         if(!(predNode1 == selfRef)){
           implicit val timeout: Timeout = Timeout(10.seconds)
-          def getKeyPred(ref: ActorRef[NodeCommand]) = CallFindPredecessor(ref, identifier)
+          def getKeyPred(ref: ActorRef[NodeCommand]) = FindKeyPredecessor(ref, identifier)
           context.ask(predNode1,getKeyPred){
-            case Success(CallFindPredResponse(predID, pred)) =>
+            case Success(FindKeyPredResponse(predID, pred)) =>
               return (pred, predID)
           }
         }
@@ -126,15 +97,11 @@ object ChordNode{
           return (predNode1, predNodeID1)
         }
       }
-
       (predNode,predNodeID)
     }
+
     override def onMessage(msg: NodeCommand): Behavior[NodeCommand] =
       msg match {
-        case CallFindPredecessor(replyTo, key)=>
-          val (predNode1, predNodeID1) = findKeyPredecessor(key)
-          replyTo ! CallFindPredResponse(predNodeID1, predNode1)
-          Behaviors.same
 
         case GetNodeSnapshot(replyTo) =>
           val fingerJson: JsonObject = new JsonObject
@@ -154,11 +121,24 @@ object ChordNode{
           replyTo ! GetNodeSuccResponse(successorId,successor)
           Behaviors.same
 
+        case SetNodeSuccessor(id,ref) =>
+          successor = ref
+          successorId = id
+          fingerTable(0).nodeRef = ref
+          fingerTable(0).nodeId = id
+          Behaviors.same
+
+        case SetNodePredecessor(id,ref) =>
+          predecessor = ref
+          predecessorId = id
+          Behaviors.same
+
         case FindKeyPredecessor(replyTo,key) =>
+          val (predNode1, predNodeID1) = findKeyPredecessor(key)
+          replyTo ! FindKeyPredResponse(predNodeID1, predNode1)
           Behaviors.same
 
         case FindKeySuccessor(replyTo,key) =>
-
           var succ: ActorRef[NodeCommand] = null
           val (pred,predID)=findKeyPredecessor(key)
           if(pred==selfRef)
@@ -177,41 +157,43 @@ object ChordNode{
                 replyTo ! FindKeySuccResponse(successorId_,succ,predID,pred)
                 NodeAdaptedResponse()
             }
+          }
+          Behaviors.same
 
+        case UpdateFingerTable(ref,id,i,key) =>
+          // Check if the candidate node is between ith start and ith finger node
+
+          var ithFingerId = fingerTable(i).nodeId
+          var candidateId = id
+          // Check for Zero crossover between candidate node and current ith finger node
+          if (ithFingerId.<(nodeHash)) {
+            ithFingerId = ithFingerId + BigInt(2).pow(M)
+            if (candidateId.<(nodeHash)) {
+              candidateId = candidateId + BigInt(2).pow(M)
+            }
+          }
+          if (candidateId.>(nodeHash) && ithFingerId.>(candidateId)) {
+            // Check for Zero crossover between candidate node and ith finger start
+            var ithStart = fingerTable(i).start
+            candidateId = id
+            if (candidateId.<(nodeHash)) {
+              candidateId = candidateId + BigInt(2).pow(M)
+              if (ithStart.<(nodeHash)) {
+                ithStart = ithStart + BigInt(2).pow(M)
+              }
+            }
+            if (ithStart.>(nodeHash) && ithStart.<(candidateId)) {
+              fingerTable(i).nodeId = id
+              fingerTable(i).nodeRef = ref
+              // Also check if successor needs to be updated
+              if (i == 0) {
+                successorId = id
+                successor = ref
+              }
+            }
+            predecessor ! UpdateFingerTable(ref,id,i,key)
           }
 
-
-          Behaviors.same
-
-        case GetNodeIndex() =>
-          context.log.info("Node index is {}")
-          Behaviors.same
-
-        case DisplayNodeInfo() =>
-          //          fingerTable.foreach(i=>
-          //          println(i.start, i.node))
-          println(context.self.path.name,fingerTable(0))
-          println(context.self.path.name,fingerTable(1))
-          println(context.self.path.name,fingerTable(2))
-          println(context.self.path.name,fingerTable(3))
-
-          println()
-          Behaviors.same
-
-        case SetNodeSuccessor(id,ref) =>
-          successor = ref
-          successorId = id
-          fingerTable(0).nodeRef = ref
-          fingerTable(0).nodeId = id
-          Behaviors.same
-
-        case SetNodePredecessor(id,ref) =>
-          predecessor = ref
-          predecessorId = id
-          Behaviors.same
-
-        case UpdateFingerTable(ref,id,index,key) =>
-//          updateFingerTable()
           Behaviors.same
 
         case getKeyValue(replyTo,key) =>
@@ -282,44 +264,13 @@ object ChordNode{
             }
           }
           updateFingerTablesOfOthers()
+          context.log.info("{} added to chord network",selfRef)
+          context.log.info("Fingertable for {} => {}",selfRef.path.name,fingerTable.mkString(","))
           replyTo ! JoinStatus("Success")
-
           Behaviors.same
 
         case _ =>
           Behaviors.unhandled
       }
-  }
-}
-
-
-object ChordSystem {
-  def apply(): Behavior[NodeCommand] = Behaviors.setup { context =>
-    val node1 = context.spawn(ChordNode(md5("Node1")),"Node1")
-    node1 ! DisplayNodeInfo()
-
-    Thread.sleep(100)
-
-    val node2 = context.spawn(ChordNode(md5("Node2")),"Node2")
-//    node1 ! SetSuccessor(node2)
-//    node1 ! FindSuccessor(md5("Node1"))
-//    node2 ! DisplayNodeInfo()
-//    node2 ! FindSuccessor(md5("Node2"))
-//    Thread.sleep(100)
-//    node1 ! DisplayNodeInfo()
-//    val node3 = context.spawn(ChordNode(md5("Node3")),"Node3")
-////    node2 ! SetSuccessor(node3)
-////    node2 ! FindSuccessor()
-//    node2 ! DisplayNodeInfo()
-//    val node4 = context.spawn(ChordNode(md5("Node4")),"Node4")
-//    node4 ! DisplayNodeInfo()
-
-    Behaviors.empty
-  }
-}
-
-object NodeTest{
-  def main(args: Array[String]): Unit = {
-    val chordSystem = ActorSystem(ChordSystem(),"ChordServerSystem")
   }
 }

@@ -9,6 +9,7 @@ import akka.http.scaladsl.server.Directives.{complete, concat, get, path, post, 
 import akka.util.Timeout
 import com.google.gson.{GsonBuilder, JsonObject}
 import com.group11.hw3.chord.ChordNode
+import com.group11.hw3.chord.ChordNode
 import com.group11.hw3.utils.ChordUtils
 
 import scala.collection.mutable
@@ -102,8 +103,6 @@ object serverRedone {
       )
     }
     val bindingFuture = Http().newServerAt("localhost", 9000).bind(route)
-
-
 
     Behaviors.receiveMessage[ChordSystemCommand] {
 
