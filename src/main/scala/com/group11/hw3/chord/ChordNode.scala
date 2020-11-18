@@ -63,6 +63,18 @@ object ChordNode{
       } )
     }
 
+    def findClosestPreceedingId(Identifier:BigInt, predRef:ActorRef[NodeCommand],nodeID:BigInt,call:String):(ActorRef[NodeCommand],BigInt) =
+    {
+      var predNode = selfRef;
+      var predNodeID: BigInt = nodeHash
+
+      call match {
+        case "Join" =>
+
+      }
+
+      (predNode,predNodeID)
+    }
     def findPredecessor(identifier:BigInt) =
     {
       var predNode = selfRef;
