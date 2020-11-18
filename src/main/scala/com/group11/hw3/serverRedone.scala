@@ -164,7 +164,7 @@ object serverRedone {
         context.log.info("**Servicing snapshot request")
         for(node <- nodeList)
         {
-          def buildRequestForSnapshot(ref:ActorRef[NodeCommand]) =
+          def buildRequestForSnapshot(ref:ActorRef[GetNodeSnapshotResponse]) =
             GetNodeSnapshot(ref)
 
           val nodeRef=hashMap.get(node).head
@@ -177,11 +177,11 @@ object serverRedone {
               println(nodesSnapshot)
               val path2 = "/output/%s.json".format("/Snapshot/Nodes")
               FileUtils.write(new File(path2), gson.toJson(nodesSnapshot), "UTF-8")
-              AdaptedResponse("Success")
+              AdaptedResponse()
             }
             case Failure(_) => {
               context.log.info("Failed to get snapshot form node")
-              AdaptedResponse("Fail")
+              AdaptedResponse()
             }
 
           }
