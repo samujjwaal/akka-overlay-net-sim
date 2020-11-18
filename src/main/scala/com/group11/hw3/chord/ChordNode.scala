@@ -61,13 +61,32 @@ object ChordNode{
 
     }
 
-    def findClosestPreceedingId(Identifier:BigInt, predRef:ActorRef[NodeCommand],nodeID:BigInt,call:String):(ActorRef[NodeCommand],BigInt) =
+    def findClosestPreceedingId(identifier:BigInt, predRef:ActorRef[NodeCommand],nodeID:BigInt,call:String):(ActorRef[NodeCommand],BigInt) =
     {
       var predNode = selfRef;
       var predNodeID: BigInt = nodeHash
 
       call match {
         case "Join" =>
+          if (identifier == nodeID) {
+            return (predecessor, predecessorId)
+          }
+          for (i <- M - 1 to 0 by -1) {
+
+            var intervalEnd = identifier
+            var valueToFind = fingerTable(i).start
+            if (identifier.<=(nodeID)) {
+              intervalEnd = identifier + Math.pow(2, M).toInt
+              if (fingerTable(i).nodeId.<=(nodeID)) {
+                valueToFind = fingerTable(i).nodeId + Math.pow(2, M).toInt
+              }
+            }
+
+            if (valueToFind.>(nodeID) && valueToFind.<(intervalEnd)) {
+              return (fingerTable(i).nodeRef, fingerTable(i).nodeId)
+            }
+
+          }
 
       }
 
