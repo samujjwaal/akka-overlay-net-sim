@@ -35,7 +35,7 @@ object ChordNode{
 
   class ChordNodeBehavior(context: ActorContext[NodeCommand], nodeHash: BigInt) extends AbstractBehavior[NodeCommand](context){
 
-    val selfRef = context.self
+    val selfRef: ActorRef[NodeCommand] = context.self
     private val fingerTable = new Array[Finger](M)
     var predecessor: ActorRef[NodeCommand] = selfRef
     var successor: ActorRef[NodeCommand] = selfRef
@@ -77,15 +77,45 @@ object ChordNode{
 
       (predNode,predNodeID)
     }
-    def findKeyPredecessor(identifier:BigInt) =
+    def findKeyPredecessor(identifier:BigInt): (ActorRef[NodeCommand], BigInt) =
     {
-      var predNode = selfRef;
+      var predNode = selfRef
       var predNodeID: BigInt = nodeHash
+      var intervalEnd = successorId
+      var valueToFind = identifier
+
+      if(intervalEnd.<(nodeHash)){
+        intervalEnd = successorId + BigInt(2).pow(M)
+        if(valueToFind.<(nodeHash)){
+          valueToFind = identifier + BigInt(2).pow(M)
+        }
+      }
+
+      if(!(valueToFind.>(nodeHash) && valueToFind.<=(intervalEnd))){
+        val (predNode1, predNodeID1) = findClosestPreceedingId(identifier, predNode, nodeHash, "Join")
+
+        if(!(predNode1 == selfRef)){
+          implicit val timeout: Timeout = Timeout(10.seconds)
+          def getKeyPred(ref: ActorRef[NodeCommand]) = CallFindPredecessor(ref, identifier)
+          context.ask(predNode1,getKeyPred){
+            case Success(CallFindPredResponse(predID, pred)) =>
+              return (pred, predID)
+          }
+        }
+        else {
+          return (predNode1, predNodeID1)
+        }
+      }
 
       (predNode,predNodeID)
     }
     override def onMessage(msg: NodeCommand): Behavior[NodeCommand] =
       msg match {
+        case CallFindPredecessor(replyTo, key)=>
+          val (predNode1, predNodeID1) = findKeyPredecessor(key)
+          replyTo ! CallFindPredResponse(predNodeID1, predNode1)
+          Behaviors.same
+
         case GetNodeSuccessor(replyTo) =>
           replyTo ! GetNodeSuccResponse(successorId,successor)
           Behaviors.same
@@ -95,8 +125,8 @@ object ChordNode{
 
         case FindKeySuccessor(replyTo,key) =>
 
-          var succ: ActorRef[NodeCommand] = null;
-          var (pred,predID)=findKeyPredecessor(key)
+          var succ: ActorRef[NodeCommand] = null
+          val (pred,predID)=findKeyPredecessor(key)
           if(pred==selfRef)
             {
               succ=successor
@@ -104,7 +134,7 @@ object ChordNode{
             }
           else
           {
-            implicit val timeout = Timeout(10 seconds)
+            implicit val timeout: Timeout = Timeout(10 seconds)
             def getKeySucc(ref:ActorRef[NodeCommand]) = GetNodeSuccessor(ref)
             context.ask(pred,getKeySucc)
             {
@@ -161,7 +191,7 @@ object ChordNode{
 
         case JoinNetwork(replyTo,networkRef) =>
           // We assume network has at least one node and so, networkRef is not null
-          implicit val timeout = Timeout(5 seconds)
+          implicit val timeout: Timeout = Timeout(5 seconds)
           def askForKeySucc(ref:ActorRef[NodeCommand]) = FindKeySuccessor(ref,fingerTable(0).start)
           context.ask(networkRef,askForKeySucc)
           {
