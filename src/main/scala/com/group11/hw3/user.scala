@@ -9,7 +9,7 @@ import scala.io.Source
 
 object User {
   def apply(): Behavior[DataRequest] = Behaviors.setup { context =>
-    val request: HttpRequest = Http("http://localhost:9000/placeholder")
+    val request: HttpRequest = Http("http://localhost:9000/chordRoot")
     Behaviors.receiveMessage {
       case ReadKey(key) =>
         context.log.info2("{} received read request for key: {}", context.self.path.name, key)

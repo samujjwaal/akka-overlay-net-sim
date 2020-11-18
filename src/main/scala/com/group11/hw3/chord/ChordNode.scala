@@ -42,63 +42,91 @@ object ChordNode{
       }
     }
 
-    def findClosestPreceedingId(identifier:BigInt, predRef:ActorRef[NodeCommand],nodeID:BigInt,callType:String):(ActorRef[NodeCommand],BigInt) =
+    def findClosestPredInFT(key:BigInt):(ActorRef[NodeCommand],BigInt) =
     {
-      var predNode = selfRef;
-      var predNodeID: BigInt = nodeHash
-      callType match {
-        case "Join" =>
-          if (identifier == nodeID) {
-            return (predecessor, predecessorId)
-          }
-          for (i <- M - 1 to 0 by -1) {
-            var intervalEnd = identifier
-            var valueToFind = fingerTable(i).start
-            if (identifier.<=(nodeID)) {
-              intervalEnd = identifier + Math.pow(2, M).toInt
-              if (fingerTable(i).nodeId.<=(nodeID)) {
-                valueToFind = fingerTable(i).nodeId + Math.pow(2, M).toInt
-              }
-            }
-            if (valueToFind.>(nodeID) && valueToFind.<(intervalEnd)) {
-              return (fingerTable(i).nodeRef, fingerTable(i).nodeId)
-            }
-          }
+      // If my hash is equal to the key, return my predecessor
+      if (key == nodeHash) {
+        return (selfRef,nodeHash)
       }
-      (predNode,predNodeID)
+      // Go through the finger table and find closest finger pointing to a node preceding the key
+      for (i <- fingerTable.indices) {
+        var index = fingerTable.size - i -1
+        // check if we can form a seq nodeHash > finger node > key
+        // if yes, then return the node pointed by this finger
+        var currKey = key
+        var fingernode = fingerTable(index).nodeId
+        // Return the finger node if it matches the key
+        if (fingernode == currKey) {
+          return (fingerTable(index).nodeRef,fingerTable(index).nodeId)
+        }
+        if (currKey.<(nodeHash)) {
+          currKey = currKey + BigInt(2).pow(M)
+          if (fingernode.<=(nodeHash)) {
+            fingernode = fingernode + BigInt(2).pow(M)
+          }
+        }
+        if (fingernode.>(nodeHash) && fingernode.<(currKey)) {
+          return (fingerTable(index).nodeRef,fingerTable(index).nodeId)
+        }
+      }
+      // If no closest node found in the finger table, return self
+      (selfRef,nodeHash)
     }
 
-    def findKeyPredecessor(identifier:BigInt): (ActorRef[NodeCommand], BigInt) =
-    {
-      var predNode = selfRef
-      var predNodeID: BigInt = nodeHash
-      var intervalEnd = successorId
-      var valueToFind = identifier
-
-      if(intervalEnd.<(nodeHash)){
-        intervalEnd = successorId + BigInt(2).pow(M)
-        if(valueToFind.<(nodeHash)){
-          valueToFind = identifier + BigInt(2).pow(M)
-        }
+    def findKeyPredecessor(key:BigInt): (ActorRef[NodeCommand], BigInt) = {
+      // If my hash is the same as key, return my predecessor
+      if (key == nodeHash) {
+        return (predecessor, predecessorId)
+      }
+      // If key == my successor, return self
+      if (key == successorId) {
+        return (selfRef, nodeHash)
       }
 
-      if(!(valueToFind.>(nodeHash) && valueToFind.<=(intervalEnd))){
-        val (predNode1, predNodeID1) = findClosestPreceedingId(identifier, predNode, nodeHash, "Join")
-
-        if(!(predNode1 == selfRef)){
-          implicit val timeout: Timeout = Timeout(10.seconds)
-          def getKeyPred(ref: ActorRef[NodeCommand]) = FindKeyPredecessor(ref, identifier)
-          context.ask(predNode1,getKeyPred){
-            case Success(FindKeyPredResponse(predID, pred)) =>
-              return (pred, predID)
-          }
-        }
-        else {
-          return (predNode1, predNodeID1)
+      // Check if the key lies between my hash and my successor's hash
+      var succId = successorId
+      var currentKey = key
+      if (succId.<(nodeHash)) {
+        succId = succId + BigInt(2).pow(M)
+        if (currentKey.<(nodeHash)) {
+          currentKey = currentKey + BigInt(2).pow(M)
         }
       }
-      (predNode,predNodeID)
+      // If key is in the interval, return self as the predecessor
+      if (currentKey.>(nodeHash) && currentKey.<(succId)) {
+        return (selfRef, nodeHash)
+      }
+
+      // Check if key lies between my pred and my hash
+      currentKey = key
+      var myId = nodeHash
+      if (myId.<(predecessorId)) {
+        myId = myId + BigInt(2).pow(M)
+        if (currentKey.<(predecessorId)) {
+          currentKey = currentKey + BigInt(2).pow(M)
+        }
+      }
+      // If key is in this interval, return my predecessor
+      if (currentKey.>(predecessorId) && currentKey.<(myId)) {
+        return (predecessor, predecessorId)
+      }
+
+      // Find closest Id we can find in our finger table which lies before the key.
+      val (closestPredRef, closestPredId) = findClosestPredInFT(key)
+      // If we get a node other than self, we found a node closer to the key. Forward the req to get predecessor
+      if (!(closestPredId == nodeHash)) {
+        implicit val timeout: Timeout = Timeout(10.seconds)
+
+        def getKeyPred(ref: ActorRef[NodeCommand]) = FindKeyPredecessor(ref, key)
+
+        context.ask(closestPredRef, getKeyPred) {
+          case Success(FindKeyPredResponse(predID, pred)) =>
+            return (pred, predID)
+        }
+      }
+      (closestPredRef, closestPredId)
     }
+
 
     override def onMessage(msg: NodeCommand): Behavior[NodeCommand] =
       msg match {
@@ -134,27 +162,25 @@ object ChordNode{
           Behaviors.same
 
         case FindKeyPredecessor(replyTo,key) =>
-          val (predNode1, predNodeID1) = findKeyPredecessor(key)
-          replyTo ! FindKeyPredResponse(predNodeID1, predNode1)
+          val (predRef, predId) = findKeyPredecessor(key)
+          replyTo ! FindKeyPredResponse(predId, predRef)
           Behaviors.same
 
         case FindKeySuccessor(replyTo,key) =>
           var succ: ActorRef[NodeCommand] = null
-          val (pred,predID)=findKeyPredecessor(key)
-          if(pred==selfRef)
-            {
-              succ=successor
-              replyTo ! FindKeySuccResponse(successorId,succ,predID,pred)
+          val (predRef,predID)=findKeyPredecessor(key)
+          if(predRef==selfRef)
+            { // key if found between this node and it successor
+              replyTo ! FindKeySuccResponse(successorId,successor,nodeHash,selfRef)
             }
           else
-          {
+          { // key is found between node pred and its successor. Get pred's successor and reply with their ref
             implicit val timeout: Timeout = Timeout(10 seconds)
-            def getKeySucc(ref:ActorRef[NodeCommand]) = GetNodeSuccessor(ref)
-            context.ask(pred,getKeySucc)
+            def getNodeSucc(ref:ActorRef[NodeCommand]) = GetNodeSuccessor(ref)
+            context.ask(predRef,getNodeSucc)
             {
-              case Success(GetNodeSuccResponse(successorId_,successor)) =>
-                succ=successor
-                replyTo ! FindKeySuccResponse(successorId_,succ,predID,pred)
+              case Success(GetNodeSuccResponse(succId,succ)) =>
+                replyTo ! FindKeySuccResponse(succId,succ,predID,predRef)
                 NodeAdaptedResponse()
             }
           }
