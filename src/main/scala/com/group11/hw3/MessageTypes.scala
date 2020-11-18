@@ -24,7 +24,12 @@ case class GetNodeIndex() extends NodeCommand
 case class DisplayNodeInfo() extends NodeCommand
 //case class FindSuccessor(key: String) extends NodeCommand
 case class FindNode(node: ActorRef[Nothing]) extends NodeCommand
+
+case class GetFingerTableStatus(replyTo: ActorRef[FingerTableStatusResponse]) extends NodeCommand
+case class FingerTableStatusResponse(ft: String)
+
 case class UpdateFingerTable(nodeRef:ActorRef[NodeCommand],nodeId:BigInt,i:Int,key:BigInt) extends NodeCommand
+
 case class GetKeyValue(replyTo: ActorRef[DataResponse],key: String) extends NodeCommand
 case class WriteKeyValue(key: String, value: String) extends  NodeCommand
 case class DataResponse(message:String)

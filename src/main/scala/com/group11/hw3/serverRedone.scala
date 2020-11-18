@@ -24,6 +24,7 @@ object serverRedone {
   private case class AdaptedDataResponse(msg: String) extends ChordSystemCommand
   private case class AdaptedJoinResponse(msg: String,nodeId: BigInt) extends ChordSystemCommand
   private case class AdaptedSnapshotResponse(msg: String) extends ChordSystemCommand
+  private case class AdaptedNodeFTResponse(status: String) extends ChordSystemCommand
 
 
   def apply(): Behavior[ChordSystemCommand] = Behaviors.setup { context =>
@@ -34,7 +35,7 @@ object serverRedone {
     implicit val system:ActorSystem[NotUsed]=ActorSystem(Behaviors.empty,"http-server")
     implicit val executor: ExecutionContext = system.executionContext
     val r = new scala.util.Random
-    implicit val timeout: Timeout = 3.seconds
+    implicit val timeout: Timeout = 10.seconds
 
     //Create nodes
     while (nodeList.size < NodeConstants.numNodes) {
@@ -66,9 +67,21 @@ object serverRedone {
         case Failure(_) =>
           AdaptedJoinResponse("Join Failed!",nodeList(i))
       }
+      Thread.sleep(10)
     }
 
-
+    Thread.sleep(100)
+    println("All nodes added to Chord. Display their Finger tables")
+    for (i <- nodeList.indices) {
+      context.ask(hashMap(nodeList(i)),GetFingerTableStatus) {
+        case Success(FingerTableStatusResponse(status)) =>
+          println("FT for node : "+nodeList(i).toString+" : "+status)
+          AdaptedNodeFTResponse(status)
+        case Failure(_) =>
+          println("Failed to get node FingerTable in server "+_)
+          AdaptedNodeFTResponse("")
+      }
+    }
 
     //Define and start http server
     val route = path("chordRoot") {
@@ -157,13 +170,17 @@ object serverRedone {
 
       case AdaptedJoinResponse(msg,nodeId) =>
 //        println("Join status for node : {} --- Status : {}",nodeId,msg)
-        context.log.info("Join status for node : {} --- Status : {}",nodeId,msg).toString
+//        context.log.info("Join status for node : {} --- Status : {}",nodeId,msg).toString
         Behaviors.same
 
       case AdaptedDataResponse(msg) =>
         Behaviors.same
 
       case AdaptedSnapshotResponse(msg) =>
+        Behaviors.same
+
+      case AdaptedNodeFTResponse(msg) =>
+
         Behaviors.same
 
       case CaptureGlobalSnapshot() =>

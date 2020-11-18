@@ -11,9 +11,9 @@ object main_test {
 
     val sys=ActorSystem(serverRedone(),"ChordServerSystem")
     Thread.sleep(2000)
-    println("Starting user requests now...")
-    ActorSystem(UserSystem(),"Users")
-    sys ! CaptureGlobalSnapshot()
+//    println("Starting user requests now...")
+//    ActorSystem(UserSystem(),"Users")
+//    sys ! CaptureGlobalSnapshot()
 
   }
 
