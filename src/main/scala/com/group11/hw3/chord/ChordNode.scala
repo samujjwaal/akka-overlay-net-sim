@@ -1,15 +1,14 @@
 package com.group11.hw3.chord
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.util.Timeout
 import com.group11.hw3._
-import com.group11.hw3.utils.ChordUtils.md5
 
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
-import scala.collection.mutable
 
 object ChordNode{
   val M = NodeConstants.M
@@ -250,8 +249,9 @@ object ChordNode{
             }
           }
           updateFingerTablesOfOthers()
+          context.log.info("{} added to chord network",selfRef)
+          context.log.info("Fingertable for {} => {}",selfRef.path.name,fingerTable.mkString(","))
           replyTo ! JoinStatus("Success")
-
           Behaviors.same
 
         case _ =>

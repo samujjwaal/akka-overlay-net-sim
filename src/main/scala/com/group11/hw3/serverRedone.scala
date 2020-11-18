@@ -1,14 +1,13 @@
 package com.group11.hw3
 
 import akka.NotUsed
-import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives.{complete, concat, get, path, post, _}
 import akka.util.Timeout
+import com.group11.hw3.chord.ChordNode
 import com.group11.hw3.utils.ChordUtils
-import com.group11.hw3.chord.{ChordNode, Finger}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -25,6 +24,9 @@ object serverRedone {
 
     implicit val system:ActorSystem[NotUsed]=ActorSystem(Behaviors.empty,"http-server")
     implicit val executor: ExecutionContext = system.executionContext
+
+    val r = new scala.util.Random
+    implicit val timeout: Timeout = 3.seconds
 
     //Create nodes
     while (nodeList.size < NodeConstants.numNodes) {
@@ -55,9 +57,6 @@ object serverRedone {
         Thread.sleep(100)
       }
     }
-
-    val r = new scala.util.Random
-    implicit val timeout: Timeout = 3.seconds
 
     //Define and start http server
     val route = path("placeholder") {
