@@ -82,8 +82,8 @@ object ChordNode{
     }
     override def onMessage(msg: NodeCommand): Behavior[NodeCommand] =
       msg match {
-        case GetKeySuccessor(replyTo) =>
-          replyTo ! GetKeySuccessorResponse(successorId,successor)
+        case GetNodeSuccessor(replyTo) =>
+          replyTo ! GetNodeSuccResponse(successorId,successor)
           Behaviors.same
 
         case FindKeyPredecessor(replyTo,key) =>
@@ -101,10 +101,10 @@ object ChordNode{
           else
           {
             implicit val timeout = Timeout(10 seconds)
-            def getKeySucc(ref:ActorRef[NodeCommand]) = GetKeySuccessor(ref)
+            def getKeySucc(ref:ActorRef[NodeCommand]) = GetNodeSuccessor(ref)
             context.ask(pred,getKeySucc)
             {
-              case Success(GetKeySuccessorResponse(successorId_,successor)) =>
+              case Success(GetNodeSuccResponse(successorId_,successor)) =>
                 succ=successor
                 replyTo ! FindKeySuccResponse(successorId_,succ,predID,pred)
                 NodeAdaptedResponse()
