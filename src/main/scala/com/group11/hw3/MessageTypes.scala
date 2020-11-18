@@ -44,6 +44,9 @@ case class SetNodeSuccessor(nodeId: BigInt,nodeRef: ActorRef[NodeCommand]) exten
 case class GetNodeSuccessor(ref: ActorRef[NodeCommand]) extends NodeCommand
 case class GetNodeSuccResponse(nodeId: BigInt, nodeRef: ActorRef[NodeCommand]) extends NodeCommand
 
+case class CallFindPredecessor(ref: ActorRef[NodeCommand],key: BigInt) extends NodeCommand
+case class CallFindPredResponse(predId: BigInt, predRef: ActorRef[NodeCommand]) extends NodeCommand
+
 
 trait ChordSystemCommand
 case class UpdateFingerTables() extends ChordSystemCommand
