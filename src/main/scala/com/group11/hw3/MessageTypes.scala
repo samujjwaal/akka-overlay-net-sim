@@ -23,7 +23,7 @@ case class GetNodeIndex() extends NodeCommand
 case class DisplayNodeInfo() extends NodeCommand
 //case class FindSuccessor(key: String) extends NodeCommand
 case class FindNode(node: ActorRef[Nothing]) extends NodeCommand
-case class UpdateFingerTable() extends NodeCommand
+case class UpdateFingerTable(nodeRef:ActorRef[NodeCommand],nodeId:BigInt,i:Int,key:BigInt) extends NodeCommand
 case class getKeyValue(node:ActorRef[NodeCommand],key: String) extends NodeCommand
 case class writeKeyValue(key: String, value: String) extends  NodeCommand
 case class HttpResponse(message:String) extends NodeCommand
@@ -43,6 +43,9 @@ case class SetNodePredecessor(nodeId: BigInt,nodeRef: ActorRef[NodeCommand]) ext
 case class SetNodeSuccessor(nodeId: BigInt,nodeRef: ActorRef[NodeCommand]) extends NodeCommand
 case class GetNodeSuccessor(ref: ActorRef[NodeCommand]) extends NodeCommand
 case class GetNodeSuccResponse(nodeId: BigInt, nodeRef: ActorRef[NodeCommand]) extends NodeCommand
+
+case class CallFindPredecessor(ref: ActorRef[NodeCommand],key: BigInt) extends NodeCommand
+case class CallFindPredResponse(predId: BigInt, predRef: ActorRef[NodeCommand]) extends NodeCommand
 
 
 trait ChordSystemCommand
