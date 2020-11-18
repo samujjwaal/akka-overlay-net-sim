@@ -8,6 +8,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives.{complete, concat, get, path, post, _}
 import akka.util.Timeout
 import com.google.gson.{GsonBuilder, JsonObject}
+//import com.group11.hw3.chord.ChordNode
 import com.group11.hw3.chord.ChordNode
 import com.group11.hw3.utils.ChordUtils
 import org.apache.commons.io.FileUtils
@@ -47,16 +48,14 @@ object serverRedone {
     nodesInChord += hashMap(nodeList(0))
     for (i <- 1 until nodeList.size) {
       var randomNodeInNetwork = hashMap(nodeList(scala.util.Random.nextInt(i)))
-      var joinStatus = ""
-      def askNodeToJoinNetwork(ref:ActorRef[NodeCommand]) = JoinNetwork(ref,randomNodeInNetwork)
+
+      def askNodeToJoinNetwork(ref:ActorRef[JoinStatus]) = JoinNetwork(ref,randomNodeInNetwork)
+
       context.ask(hashMap(nodeList(i)),askNodeToJoinNetwork) {
         case Success(JoinStatus(status)) =>
-          joinStatus = status
-          AdaptedResponse(status)
-      }
-      if (joinStatus == "Success") {
-        context.log.info("Node {} joined the network",hashMap(nodeList(i)).toString)
-        Thread.sleep(100)
+          AdaptedJoinResponse(status,nodeList(i))
+        case Failure(_) =>
+          AdaptedJoinResponse("Join Failed!",nodeList(i))
       }
     }
 
@@ -71,20 +70,18 @@ object serverRedone {
             val nodeHash=nodeList(index)
             val x=hashMap.get(nodeHash)
             var msgReply = ""
-            def buildRequest(ref:ActorRef[NodeCommand]) =
-              getKeyValue(ref, key)
 
-            val ref = x.head
-//            x.head ! buildRequest
-            context.ask(x.head,buildRequest)
+            def dataRequest(ref:ActorRef[DataResponse]) = GetKeyValue(ref, key)
+
+            context.ask(x.head,dataRequest)
             {
-              case Success(HttpResponse(message)) => {
+              case Success(DataResponse(message)) => {
                 msgReply = message
-                AdaptedResponse(msgReply)
+                AdaptedDataResponse(msgReply)
               }
               case Failure(_) => {
                 msgReply = "Could not find Key : "+key
-                AdaptedResponse(msgReply)
+                AdaptedDataResponse(msgReply)
               }
             }
             complete("Read/Get response:"+msgReply)
@@ -95,7 +92,7 @@ object serverRedone {
             val index=r.nextInt(NodeConstants.numNodes)
             val nodeHash=nodeList(index)
             val x=hashMap.get(nodeHash)
-            x.head ! writeKeyValue(key,value)
+            x.head ! WriteKeyValue(key,value)
             complete("Post method done")
           }
 
@@ -147,6 +144,16 @@ object serverRedone {
         Behaviors.same
 
       case WriteInitialData() =>
+        Behaviors.same
+
+      case AdaptedJoinResponse(msg,nodeId) =>
+        context.log.info("Join status for node : {} --- Status : {}",nodeId,msg).toString
+        Behaviors.same
+
+      case AdaptedDataResponse(msg) =>
+        Behaviors.same
+
+      case AdaptedSnapshotResponse(msg) =>
         Behaviors.same
 
       case CaptureGlobalSnapshot() =>

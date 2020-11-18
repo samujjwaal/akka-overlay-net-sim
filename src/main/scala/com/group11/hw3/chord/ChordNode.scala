@@ -223,12 +223,12 @@ object ChordNode{
 
           Behaviors.same
 
-        case getKeyValue(replyTo,key) =>
+        case GetKeyValue(replyTo,key) =>
           context.log.info("{} received read request by NODE ACTOR for key: {}", context.self.path.name, key)
-          replyTo ! HttpResponse("Dummy value!")
+          replyTo ! DataResponse("Dummy value!")
           Behaviors.same
 
-        case writeKeyValue(key,value) =>
+        case WriteKeyValue(key,value) =>
           context.log.info("{} received write request by NODE ACTOR for key: {}, value: {}", context.self.path.name, key, value)
           Behaviors.same
 
@@ -266,7 +266,7 @@ object ChordNode{
             var curStart = fingerTable(i).start
             if (lastSucc.<(nodeHash)) {
               lastSucc = lastSucc + BigInt(2).pow(M)
-              if (curStart.<(nodeHash)) {
+              if (curStart.>(nodeHash) && curStart.<(nodeHash)) {
                 curStart = curStart + BigInt(2).pow(M)
               }
             }
@@ -294,6 +294,9 @@ object ChordNode{
           context.log.info("{} added to chord network",selfRef)
           context.log.info("Fingertable for {} => {}",selfRef.path.name,fingerTable.mkString(","))
           replyTo ! JoinStatus("Success")
+          Behaviors.same
+
+        case NodeAdaptedResponse() =>
           Behaviors.same
 
         case _ =>
