@@ -7,7 +7,6 @@ import com.google.gson.JsonObject
 import com.group11.hw3._
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
@@ -77,13 +76,14 @@ object ChordNode{
             resPredId = fingerTable(index).nodeId
           }
           else {
-            if (currKey.<(nodeHash)) {
-              currKey = currKey + BigInt(2).pow(M)
-              if (fingernode.<=(nodeHash)) {
-                fingernode = fingernode + BigInt(2).pow(M)
-              }
-            }
-            if (fingernode.>(nodeHash) && fingernode.<(currKey)) {
+//            if (currKey.<(nodeHash)) {
+//              currKey = currKey + BigInt(2).pow(M)
+//              if (fingernode.<=(nodeHash)) {
+//                fingernode = fingernode + BigInt(2).pow(M)
+//              }
+//            }
+            //fingernode.>(nodeHash) && fingernode.<(currKey)
+            if (checkRange(false,nodeHash,currKey,false,fingernode)) {
               resPredRef = fingerTable(index).nodeRef
               resPredId = fingerTable(index).nodeId
             }
@@ -111,14 +111,15 @@ object ChordNode{
       // Check if the key lies between my hash and my successor's hash
       var succId = successorId
       var currentKey = key
-      if (succId.<(nodeHash)) {
-        succId = succId + BigInt(2).pow(M)
-        if (currentKey.<(nodeHash)) {
-          currentKey = currentKey + BigInt(2).pow(M)
-        }
-      }
+//      if (succId.<(nodeHash)) {
+//        succId = succId + BigInt(2).pow(M)
+//        if (currentKey.<(nodeHash)) {
+//          currentKey = currentKey + BigInt(2).pow(M)
+//        }
+//      }
       // If key is in the interval, return self as the predecessor
-      if (currentKey.>(nodeHash) && currentKey.<(succId)) {
+      //currentKey.>(nodeHash) && currentKey.<(succId)
+      if (checkRange(false,nodeHash,succId,false,currentKey)) {
         resPredRef = selfRef
         resPredId = nodeHash
       }
@@ -126,14 +127,15 @@ object ChordNode{
       // Check if key lies between my pred and my hash
       currentKey = key
       var myId = nodeHash
-      if (myId.<(predecessorId)) {
-        myId = myId + BigInt(2).pow(M)
-        if (currentKey.<(predecessorId)) {
-          currentKey = currentKey + BigInt(2).pow(M)
-        }
-      }
+//      if (myId.<(predecessorId)) {
+//        myId = myId + BigInt(2).pow(M)
+//        if (currentKey.<(predecessorId)) {
+//          currentKey = currentKey + BigInt(2).pow(M)
+//        }
+//      }
       // If key is in this interval, return my predecessor
-      if (currentKey.>(predecessorId) && currentKey.<(myId)) {
+      //currentKey.>(predecessorId) && currentKey.<(myId)
+      if (checkRange(false,predecessorId,myId,false,currentKey)) {
         resPredRef = predecessor
         resPredId = predecessorId
       }
@@ -166,6 +168,26 @@ object ChordNode{
 
     }
 
+    def checkRange(leftInclude: Boolean, leftValue: BigInt, rightValue: BigInt, rightInclude: Boolean, valueToCheck: BigInt): Boolean =
+    {
+      if (leftValue == rightValue) {
+        true
+      }
+      else if (leftValue < rightValue) {
+        if (valueToCheck == leftValue && leftInclude || valueToCheck == rightValue && rightInclude || (valueToCheck > leftValue && valueToCheck < rightValue)) {
+          true
+        } else {
+          false
+        }
+      } else {
+        if (valueToCheck == leftValue && leftInclude || valueToCheck == rightValue && rightInclude || (valueToCheck > leftValue || valueToCheck < rightValue)) {
+          true
+        } else {
+          false
+        }
+      }
+
+    }
 
     override def onMessage(msg: NodeCommand): Behavior[NodeCommand] =
       msg match {
@@ -242,23 +264,31 @@ object ChordNode{
           var ithFingerId = fingerTable(i).nodeId
           var candidateId = id
           // Check for Zero crossover between candidate node and current ith finger node
-          if (ithFingerId.<(nodeHash)) {
-            ithFingerId = ithFingerId + BigInt(2).pow(M)
-            if (candidateId.<(nodeHash)) {
-              candidateId = candidateId + BigInt(2).pow(M)
-            }
-          }
-          if (candidateId.>(nodeHash) && ithFingerId.>(candidateId)) {
+//          if (ithFingerId.<(nodeHash)) {
+//            ithFingerId = ithFingerId + BigInt(2).pow(M)
+//            if (candidateId.<(nodeHash)) {
+//              candidateId = candidateId + BigInt(2).pow(M)
+//            }
+//          }
+          //candidateId.>(nodeHash) && ithFingerId.>(candidateId)
+          if (checkRange(false,nodeHash,ithFingerId,false,candidateId)) {
             // Check for Zero crossover between candidate node and ith finger start
+
+
+
             var ithStart = fingerTable(i).start
             candidateId = id
-            if (candidateId.<(nodeHash)) {
-              candidateId = candidateId + BigInt(2).pow(M)
-              if (ithStart.<(nodeHash)) {
-                ithStart = ithStart + BigInt(2).pow(M)
-              }
-            }
-            if (ithStart.>(nodeHash) && ithStart.<(candidateId)) {
+
+            if(checkRange(false,ithStart,candidateId,false,nodeHash))
+
+//            if (candidateId.<(nodeHash)) {
+//              candidateId = candidateId + BigInt(2).pow(M)
+//              if (ithStart.<(nodeHash)) {
+//                ithStart = ithStart + BigInt(2).pow(M)
+//              }
+//            }
+              //ithStart.>(nodeHash) && ithStart.<(candidateId)
+            if (checkRange(false,nodeHash,candidateId,false,ithStart)) {
               fingerTable(i).nodeId = id
               fingerTable(i).nodeRef = ref
               // Also check if successor needs to be updated
@@ -305,13 +335,14 @@ object ChordNode{
 
                 var lastSucc = fingerTable(i-1).nodeId
                 var curStart = fingerTable(i).start
-                if (lastSucc.<(nodeHash)) {
-                  lastSucc = lastSucc + BigInt(2).pow(M)
-                  if (curStart.>(nodeHash) && curStart.<(nodeHash)) {
-                    curStart = curStart + BigInt(2).pow(M)
-                  }
-                }
-                if (lastSucc.>(nodeHash) && lastSucc.>=(curStart)) {
+//                if (lastSucc.<(nodeHash)) {
+//                  lastSucc = lastSucc + BigInt(2).pow(M)
+//                  if (curStart.>(nodeHash) && curStart.<(nodeHash)) {
+//                    curStart = curStart + BigInt(2).pow(M)
+//                  }
+//                }
+                //lastSucc.>(nodeHash) && lastSucc.>=(curStart)
+                if (checkRange(false,nodeHash,curStart,false,lastSucc)) {
                   fingerTable(i).nodeId = fingerTable(i-1).nodeId
                   fingerTable(i).nodeRef = fingerTable(i-1).nodeRef
 //                  gotFingerNode += 1
