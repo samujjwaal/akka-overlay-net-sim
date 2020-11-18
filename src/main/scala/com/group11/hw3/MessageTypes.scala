@@ -55,8 +55,4 @@ case class GetNodeSnapshotResponse(snap:JsonObject)
 trait ChordSystemCommand
 case class UpdateFingerTables() extends ChordSystemCommand
 case class WriteInitialData() extends ChordSystemCommand
-case class AdaptedDataResponse(msg: String) extends ChordSystemCommand
-case class AdaptedJoinResponse(msg: String,nodeId: BigInt) extends ChordSystemCommand
-case class AdaptedSnapshotResponse(msg: String) extends ChordSystemCommand
 case class CaptureGlobalSnapshot() extends ChordSystemCommand
-case class AdaptedResponse() extends ChordSystemCommand
