@@ -25,12 +25,12 @@ case class DisplayNodeInfo() extends NodeCommand
 //case class FindSuccessor(key: String) extends NodeCommand
 case class FindNode(node: ActorRef[Nothing]) extends NodeCommand
 case class UpdateFingerTable(nodeRef:ActorRef[NodeCommand],nodeId:BigInt,i:Int,key:BigInt) extends NodeCommand
-case class getKeyValue(node:ActorRef[NodeCommand],key: String) extends NodeCommand
-case class writeKeyValue(key: String, value: String) extends  NodeCommand
-case class HttpResponse(message:String) extends NodeCommand
+case class GetKeyValue(replyTo: ActorRef[DataResponse],key: String) extends NodeCommand
+case class WriteKeyValue(key: String, value: String) extends  NodeCommand
+case class DataResponse(message:String)
 
-case class JoinNetwork(master:ActorRef[NodeCommand],networkRef: ActorRef[NodeCommand]) extends NodeCommand
-case class JoinStatus(status: String) extends NodeCommand
+case class JoinNetwork(replyTo :ActorRef[JoinStatus],networkRef: ActorRef[NodeCommand]) extends NodeCommand
+case class JoinStatus(status: String)
 
 case class FindKeyPredecessor(ref: ActorRef[NodeCommand],key: BigInt) extends NodeCommand
 case class FindKeyPredResponse(predId: BigInt, predRef: ActorRef[NodeCommand]) extends NodeCommand
@@ -48,12 +48,14 @@ case class GetNodeSuccResponse(nodeId: BigInt, nodeRef: ActorRef[NodeCommand]) e
 case class CallFindPredecessor(ref: ActorRef[NodeCommand],key: BigInt) extends NodeCommand
 case class CallFindPredResponse(predId: BigInt, predRef: ActorRef[NodeCommand]) extends NodeCommand
 
-case class GetNodeSnapshot(ref:ActorRef[NodeCommand]) extends  NodeCommand
-case class GetNodeSnapshotResponse(snap:JsonObject) extends  NodeCommand
+case class GetNodeSnapshot(ref:ActorRef[GetNodeSnapshotResponse]) extends  NodeCommand
+case class GetNodeSnapshotResponse(snap:JsonObject)
 
 
 trait ChordSystemCommand
 case class UpdateFingerTables() extends ChordSystemCommand
 case class WriteInitialData() extends ChordSystemCommand
-case class AdaptedResponse(msg: String) extends ChordSystemCommand
+case class AdaptedDataResponse(msg: String) extends ChordSystemCommand
+case class AdaptedJoinResponse(msg: String,nodeId: BigInt) extends ChordSystemCommand
+case class AdaptedSnapshotResponse(msg: String) extends ChordSystemCommand
 case class CaptureGlobalSnapshot() extends ChordSystemCommand
