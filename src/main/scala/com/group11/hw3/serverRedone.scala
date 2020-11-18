@@ -1,6 +1,6 @@
 package com.group11.hw3
 import java.io.File
-import org.apache.commons.io.FileUtils
+
 import akka.NotUsed
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
@@ -24,6 +24,7 @@ object serverRedone {
   private case class AdaptedDataResponse(msg: String) extends ChordSystemCommand
   private case class AdaptedJoinResponse(msg: String,nodeId: BigInt) extends ChordSystemCommand
   private case class AdaptedSnapshotResponse(msg: String) extends ChordSystemCommand
+
 
   def apply(): Behavior[ChordSystemCommand] = Behaviors.setup { context =>
     var hashMap = new mutable.HashMap[BigInt,ActorRef[NodeCommand]]()
@@ -177,7 +178,6 @@ object serverRedone {
             GetNodeSnapshot(ref)
 
           val nodeRef=hashMap.get(node).head
-
           context.ask(nodeRef,buildRequestForSnapshot){
             case Success(GetNodeSnapshotResponse(snap:JsonObject))=> {
               println("Snapshot received for:"+nodeRef+" snap:"+snap)
@@ -186,18 +186,17 @@ object serverRedone {
               println(nodesSnapshot)
               val path2 = "/output/%s.json".format("/Snapshot/Nodes")
               FileUtils.write(new File(path2), gson.toJson(nodesSnapshot), "UTF-8")
-              AdaptedResponse()
+              AdaptedSnapshotResponse("Success")
             }
             case Failure(_) => {
               context.log.info("Failed to get snapshot form node")
-              AdaptedResponse()
+              AdaptedSnapshotResponse("Failed")
             }
 
           }
-
           }
-        val path = "output/%s.json".format("/Snapshot/Nodes")
-        FileUtils.write(new File(path), gson.toJson(nodesSnapshot), "UTF-8")
+//        val path = "output/%s.json".format("/Snapshot/Nodes")
+//        FileUtils.write(new File(path), gson.toJson(nodesSnapshot), "UTF-8")
         Behaviors.same
 
       case _ =>
