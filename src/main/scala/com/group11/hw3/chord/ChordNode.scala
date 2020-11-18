@@ -58,7 +58,11 @@ object ChordNode{
 //      } )
 //    }
     def updateFingerTablesOfOthers(): Unit = {
-
+      for (i <- 0 until M) {
+        var p = (nodeHash - BigInt(2).pow(i) + BigInt(2).pow(M) + 1) % BigInt(2).pow(M)
+        var (pred,predID)=findKeyPredecessor(p)
+        pred ! UpdateFingerTable(selfRef,nodeHash,i,p)
+      }
     }
 
     def findClosestPreceedingId(Identifier:BigInt, predRef:ActorRef[NodeCommand],nodeID:BigInt,call:String):(ActorRef[NodeCommand],BigInt) =
@@ -73,7 +77,7 @@ object ChordNode{
 
       (predNode,predNodeID)
     }
-    def findPredecessor(identifier:BigInt) =
+    def findKeyPredecessor(identifier:BigInt) =
     {
       var predNode = selfRef;
       var predNodeID: BigInt = nodeHash
@@ -92,7 +96,7 @@ object ChordNode{
         case FindKeySuccessor(replyTo,key) =>
 
           var succ: ActorRef[NodeCommand] = null;
-          var (pred,predID)=findPredecessor(key)
+          var (pred,predID)=findKeyPredecessor(key)
           if(pred==selfRef)
             {
               succ=successor
@@ -142,7 +146,7 @@ object ChordNode{
           predecessorId = id
           Behaviors.same
 
-        case UpdateFingerTable() =>
+        case UpdateFingerTable(ref,id,index,key) =>
 //          updateFingerTable()
           Behaviors.same
 
