@@ -114,6 +114,7 @@ object ChordNode{
           nodeJson.addProperty("Predecessor", predecessor.path.name)
           nodeJson.addProperty("KeyValuePairs", nodeData.size)
           nodeJson.add("Fingers", fingerJson)
+          //println(nodeJson)
           replyTo ! GetNodeSnapshotResponse(nodeJson)
           Behaviors.same
 

@@ -1,6 +1,6 @@
 package com.group11.hw3
 import java.io.File
-import org.apache.commons.io.FileUtils
+
 import akka.NotUsed
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
@@ -9,8 +9,8 @@ import akka.http.scaladsl.server.Directives.{complete, concat, get, path, post, 
 import akka.util.Timeout
 import com.google.gson.{GsonBuilder, JsonObject}
 import com.group11.hw3.chord.ChordNode
-import com.group11.hw3.chord.ChordNode
 import com.group11.hw3.utils.ChordUtils
+import org.apache.commons.io.FileUtils
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -104,6 +104,43 @@ object serverRedone {
     }
     val bindingFuture = Http().newServerAt("localhost", 9000).bind(route)
 
+    /*
+    println("**Received request for snapshot")
+    val gson=new GsonBuilder().setPrettyPrinting().create()
+    val nodesSnapshot = new JsonObject()
+    var nodeSnap=new JsonObject()
+    context.log.info("**Servicing snapshot request")
+    for(node <- nodeList)
+    {
+      def buildRequestForSnapshot(ref:ActorRef[NodeCommand]) =
+        GetNodeSnapshot(ref)
+
+      val nodeRef=hashMap.get(node).head
+
+      context.ask(nodeRef,buildRequestForSnapshot){
+        case Success(GetNodeSnapshotResponse(snap:JsonObject))=> {
+          println("Snapshot received for:"+nodeRef+" snap:"+snap)
+          nodeSnap=snap
+          nodesSnapshot.add("Node"+snap.get("Node"),snap)
+          println(nodesSnapshot)
+          val path2 = "/output/%s.json".format("/Snapshot/Nodes")
+          FileUtils.write(new File(path2), gson.toJson(nodesSnapshot), "UTF-8")
+          AdaptedResponse("Success")
+        }
+        case Failure(_) => {
+          context.log.info("Failed to get snapshot form node")
+          AdaptedResponse("Fail")
+        }
+
+      }
+
+      println(nodesSnapshot)
+    }
+    //Thread.sleep(3000)
+    println(nodesSnapshot)
+//    val path2 = "output/%s.json".format("/Snapshot/Nodes")
+//    FileUtils.write(new File(path2), gson.toJson(nodesSnapshot), "UTF-8")
+      */
     Behaviors.receiveMessage[ChordSystemCommand] {
 
       case UpdateFingerTables() =>
@@ -113,31 +150,42 @@ object serverRedone {
         Behaviors.same
 
       case CaptureGlobalSnapshot() =>
+        println("**Received request for snapshot")
         val gson=new GsonBuilder().setPrettyPrinting().create()
         val nodesSnapshot = new JsonObject()
-
+        var nodeSnap=new JsonObject()
+        context.log.info("**Servicing snapshot request")
         for(node <- nodeList)
-          {
-            def buildRequestForSnapshot(ref:ActorRef[NodeCommand]) =
-              GetNodeSnapshot(ref)
+        {
+          def buildRequestForSnapshot(ref:ActorRef[NodeCommand]) =
+            GetNodeSnapshot(ref)
 
-            val nodeRef=hashMap.get(node).head
+          val nodeRef=hashMap.get(node).head
 
-            context.ask(nodeRef,buildRequestForSnapshot){
-              case Success(GetNodeSnapshotResponse(snap:JsonObject))=> {
-                nodesSnapshot.add("Node %s".format(nodeRef),snap)
-                AdaptedResponse("Success")
-              }
-              case Failure(_) => {
-                context.log.info("Failed to get snapshot form node")
-                AdaptedResponse("Fail")
-              }
+          context.ask(nodeRef,buildRequestForSnapshot){
+            case Success(GetNodeSnapshotResponse(snap:JsonObject))=> {
+              println("Snapshot received for:"+nodeRef+" snap:"+snap)
+              nodeSnap=snap
+              nodesSnapshot.add("Node"+snap.get("Node"),snap)
+              println(nodesSnapshot)
+              val path2 = "/output/%s.json".format("/Snapshot/Nodes")
+              FileUtils.write(new File(path2), gson.toJson(nodesSnapshot), "UTF-8")
+              AdaptedResponse("Success")
+            }
+            case Failure(_) => {
+              context.log.info("Failed to get snapshot form node")
+              AdaptedResponse("Fail")
             }
 
           }
-        val path = "output/%s.json".format("/Snapshot/Nodes")
-        FileUtils.write(new File(path), gson.toJson(nodesSnapshot), "UTF-8")
-        Behaviors.same
+
+          println(nodesSnapshot)
+        }
+        //Thread.sleep(3000)
+        println(nodesSnapshot)
+        //    val path2 = "output/%s.json".format("/Snapshot/Nodes")
+        //    FileUtils.write(new File(path2), gson.toJson(nodesSnapshot), "UTF-8")
+          Behaviors.same
     }
     Behaviors.empty
   }
