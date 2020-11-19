@@ -7,17 +7,6 @@ trait DataRequest
 case class ReadKey(key: String) extends DataRequest
 case class WriteValue(key: String, value: String) extends DataRequest
 
-//trait NodeRequest
-//case class FindNode(node: ActorRef[Nothing]) extends NodeRequest
-//case class getKeyValue(key: String) extends NodeRequest
-//case class writeKeyValue(key: String, value: String) extends  NodeRequest
-//case class Response(message:String) extends NodeRequest
-
-
-
-
-//case class FindNode(node: ActorRef)
-
 trait NodeCommand
 case class NodeAdaptedResponse() extends NodeCommand
 case class GetNodeIndex() extends NodeCommand
@@ -57,7 +46,16 @@ case class GetNodeSnapshot(ref:ActorRef[GetNodeSnapshotResponse]) extends  NodeC
 case class GetNodeSnapshotResponse(snap:JsonObject)
 
 
+
 trait ChordSystemCommand
 case class UpdateFingerTables() extends ChordSystemCommand
 case class WriteInitialData() extends ChordSystemCommand
 case class CaptureGlobalSnapshot() extends ChordSystemCommand
+
+//trait NodeRequest
+//case class FindNode(node: ActorRef[Nothing]) extends NodeRequest
+//case class getKeyValue(key: String) extends NodeRequest
+//case class writeKeyValue(key: String, value: String) extends  NodeRequest
+//case class Response(message:String) extends NodeRequest
+
+//case class FindNode(node: ActorRef)
