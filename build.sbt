@@ -13,5 +13,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http" % "10.2.1",
   "org.scalaj" %% "scalaj-http" % "2.4.2",
   "com.google.code.gson" % "gson" % "2.8.5",
-  "commons-io" % "commons-io" % "2.6"
+  "commons-io" % "commons-io" % "2.6",
+  "org.scalatest" %% "scalatest" % "3.2.2" % "test",
+  "org.scalactic" %% "scalactic" % "3.2.2"
 )
