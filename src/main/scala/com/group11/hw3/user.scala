@@ -3,7 +3,9 @@ package com.group11.hw3
 import akka.NotUsed
 import akka.actor.typed.scaladsl.{Behaviors, LoggerOps, Routers}
 import akka.actor.typed.{Behavior, SupervisorStrategy}
+import com.group11.hw3.utils.Utils
 import scalaj.http._
+
 import scala.io.Source
 
 

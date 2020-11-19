@@ -1,4 +1,4 @@
-package com.group11.hw3
+package com.group11.hw3.utils
 
 object Utils {
   def randomlySelectRequestType(): Boolean = {

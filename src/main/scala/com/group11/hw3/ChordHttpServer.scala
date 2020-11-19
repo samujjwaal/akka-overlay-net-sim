@@ -19,7 +19,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-object serverRedone {
+object ChordHttpServer {
   //private case class AdaptedResponse(message: String) extends ChordSystemCommand
   private case class AdaptedDataResponse(msg: String) extends ChordSystemCommand
   private case class AdaptedJoinResponse(msg: String,nodeId: BigInt) extends ChordSystemCommand
@@ -160,6 +160,8 @@ object serverRedone {
 //    val path2 = "output/%s.json".format("/Snapshot/Nodes")
 //    FileUtils.write(new File(path2), gson.toJson(nodesSnapshot), "UTF-8")
       */
+
+
     Behaviors.receiveMessage[ChordSystemCommand] {
 
       case UpdateFingerTables() =>
@@ -170,7 +172,7 @@ object serverRedone {
 
       case AdaptedJoinResponse(msg,nodeId) =>
 //        println("Join status for node : {} --- Status : {}",nodeId,msg)
-//        context.log.info("Join status for node : {} --- Status : {}",nodeId,msg).toString
+        context.log.info("Join status for node : {} --- Status : {}",nodeId,msg).toString
         Behaviors.same
 
       case AdaptedDataResponse(msg) =>
@@ -221,28 +223,3 @@ object serverRedone {
     }
   }
 }
-
-
-//object DummyNode {
-////  var DummyNodeServiceKey = ServiceKey[NodeRequest]("")
-////  trait NodeRequest
-////  case class FindNode(node: ActorRef[Nothing]) extends NodeRequest
-////  case class getKeyValue(key: String,actorRef: ActorRef[Response]) extends NodeRequest
-////  case class writeKeyValue(key: String, value: String) extends  NodeRequest
-////  case class Response(message:String) extends NodeRequest
-//
-//  def apply(hash:BigInt): Behavior[NodeCommand] = Behaviors.setup { context =>
-////    DummyNodeServiceKey=ServiceKey[NodeRequest](hash.toString())
-////    context.system.receptionist ! Receptionist.Register(DummyNodeServiceKey, context.self)
-//
-//    Behaviors.receiveMessage {
-//      case getKeyValue(key) =>
-//        context.log.info("{} received read request by NODE ACTOR for key: {}", context.self.path.name, key)
-//        //replyTo ! Response("Dummy value!")
-//        Behaviors.same
-//      case writeKeyValue(key,value) =>
-//        context.log.info("{} received write request by NODE ACTOR for key: {}, value: {}", context.self.path.name, key, value)
-//        Behaviors.same
-//    }
-//  }
-//}
