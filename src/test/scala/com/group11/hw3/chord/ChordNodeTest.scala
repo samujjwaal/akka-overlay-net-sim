@@ -30,7 +30,7 @@ class ChordNodeTest extends AnyFunSuite {
     }
 
     val chordSystem = ActorSystem(TestChordSystem(),"TestChordSystem")
-    
+
     assert(chordSystem.isInstanceOf[ActorSystem[NodeCommand]])
 
   }

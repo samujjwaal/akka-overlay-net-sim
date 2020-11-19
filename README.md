@@ -2,6 +2,14 @@
 
 ### Description: Design and implement an Actor-based computational model for the Chord overlay network algorithm
 
+## Team Members (Group 11)
+
+Garima Gupta (ggupta22)
+
+Avani Mande (amande6)
+
+Samujjwaal Dey (sdey9)
+
 ## Overview
 As part of this project a cloud simulation is implemented based on the Chord overlay network algorithm using the Akka typed actor model. 
 
@@ -11,13 +19,9 @@ The simulation has three main components. The user system which generates user a
 
 ## Chord Algorithm
 
-
-
-
-
-## Akka Actor Model
-
-
+The Chord algorithm uses convergent hashing which when given a key returns a value. It is a peer to peer distributed hash table. 
+Solves problem of locating a data item in a collection of distributed nodes, considering frequent node arrivals and departures
+We implement a simpler version where fault tolerance is not taken into consideration.
 
 
 
@@ -51,5 +55,34 @@ The GET request is used to read a value given that the user provides a key. The 
 The data that we use here for this simulation is available in resourses/listfile.txt and contains comma-separated-values of a title song and its release year.
 The user uses this data to query for a song year given a song title. The link from which the dataset is obtained is given here. http://millionsongdataset.com/pages/getting-dataset/
 
-
 A small subset of the dataset is chosen. The data is preprocessed in python to retrieve just two characteristics namely the song name and song year. 
+
+
+
+## Instructions to Execute
+
+1. Clone this repository from Bitcucket
+2. Run `sbt clean compile test` to compile the project and run test cases
+3. Import as sbt project in IntelliJ IDE
+4. Run the `Main` scala class file to execute the simulation
+
+
+
+### References
+
+GitHub repositories: 
+
+- [Link 1](https://github.com/pramo31/ChordSimulator)
+- [Link 2](https://github.com/Swati32/Chord-Implementation-in-scala)
+- [Link 3](https://github.com/softinio/pat)
+
+Documentation:
+
+[Akka Typed Actor Model](https://doc.akka.io/docs/akka/current/typed/index.html)
+
+[Akka HTTP](https://doc.akka.io/docs/akka-http/current/introduction.html)
+
+[Chord Algorithm](https://pdos.csail.mit.edu/papers/chord:sigcomm01/chord_sigcomm.pdf)
+
+
+

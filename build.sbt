@@ -15,5 +15,6 @@ libraryDependencies ++= Seq(
   "com.google.code.gson" % "gson" % "2.8.5",
   "commons-io" % "commons-io" % "2.6",
   "org.scalatest" %% "scalatest" % "3.2.2" % "test",
-  "org.scalactic" %% "scalactic" % "3.2.2"
+  "org.scalactic" %% "scalactic" % "3.2.2",
+  "com.typesafe" % "config" % "1.4.0"
 )
