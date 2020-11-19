@@ -13,7 +13,7 @@ object main_test {
     Thread.sleep(2000)
 //    println("Starting user requests now...")
 //    ActorSystem(UserSystem(),"Users")
-    sys ! CaptureGlobalSnapshot()
+//    sys ! CaptureGlobalSnapshot()
 
   }
 
