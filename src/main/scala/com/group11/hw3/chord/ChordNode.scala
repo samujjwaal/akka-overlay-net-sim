@@ -29,6 +29,7 @@ object ChordNode{
     var successorId: BigInt = nodeHash
     var nodeData = new mutable.HashMap[BigInt,Int]()
 
+    //Initialize start for each finger entry
     fingerTable.indices.foreach(i =>{
       val start:BigInt = (nodeHash + BigInt(2).pow(i)) % ringSize
       fingerTable(i) = Finger(start, selfRef, nodeHash)
@@ -36,6 +37,7 @@ object ChordNode{
 
     println("Node Created : "+nodeHash.toString+" Initial Finger table on node creation : "+getFingerTableStatus())
 
+    //Printing finger table
     def getFingerTableStatus(): String = {
       var fingerTableStatus = "[ "
       for (finger <- fingerTable) {
@@ -45,6 +47,7 @@ object ChordNode{
       fingerTableStatus
     }
 
+    //Function to update finger tables of predecessors.
     def updateFingerTablesOfOthers(): Unit = {
       for (i <- 0 until M) {
         var p = (nodeHash - BigInt(2).pow(i) + BigInt(2).pow(M) + 1) % BigInt(2).pow(M)
@@ -76,13 +79,7 @@ object ChordNode{
             resPredId = fingerTable(index).nodeId
           }
           else {
-//            if (currKey.<(nodeHash)) {
-//              currKey = currKey + BigInt(2).pow(M)
-//              if (fingernode.<=(nodeHash)) {
-//                fingernode = fingernode + BigInt(2).pow(M)
-//              }
-//            }
-            //fingernode.>(nodeHash) && fingernode.<(currKey)
+
             if (checkRange(false,nodeHash,currKey,false,fingernode)) {
               resPredRef = fingerTable(index).nodeRef
               resPredId = fingerTable(index).nodeId
@@ -111,14 +108,8 @@ object ChordNode{
       // Check if the key lies between my hash and my successor's hash
       var succId = successorId
       var currentKey = key
-//      if (succId.<(nodeHash)) {
-//        succId = succId + BigInt(2).pow(M)
-//        if (currentKey.<(nodeHash)) {
-//          currentKey = currentKey + BigInt(2).pow(M)
-//        }
-//      }
+
       // If key is in the interval, return self as the predecessor
-      //currentKey.>(nodeHash) && currentKey.<(succId)
       if (checkRange(false,nodeHash,succId,false,currentKey)) {
         resPredRef = selfRef
         resPredId = nodeHash
@@ -127,14 +118,8 @@ object ChordNode{
       // Check if key lies between my pred and my hash
       currentKey = key
       var myId = nodeHash
-//      if (myId.<(predecessorId)) {
-//        myId = myId + BigInt(2).pow(M)
-//        if (currentKey.<(predecessorId)) {
-//          currentKey = currentKey + BigInt(2).pow(M)
-//        }
-//      }
+
       // If key is in this interval, return my predecessor
-      //currentKey.>(predecessorId) && currentKey.<(myId)
       if (checkRange(false,predecessorId,myId,false,currentKey)) {
         resPredRef = predecessor
         resPredId = predecessorId
@@ -168,6 +153,7 @@ object ChordNode{
 
     }
 
+    //Function to check whether a given value lies within a range. This function also takes care of zero crossover.
     def checkRange(leftInclude: Boolean, leftValue: BigInt, rightValue: BigInt, rightInclude: Boolean, valueToCheck: BigInt): Boolean =
     {
       if (leftValue == rightValue) {
@@ -192,6 +178,7 @@ object ChordNode{
     override def onMessage(msg: NodeCommand): Behavior[NodeCommand] =
       msg match {
 
+          //To retrieve the current snapshot of the system
         case GetNodeSnapshot(replyTo) =>
           val fingerJson: JsonObject = new JsonObject
           for (i <- fingerTable.indices) {
@@ -203,7 +190,6 @@ object ChordNode{
           nodeJson.addProperty("Predecessor", predecessor.path.name)
           nodeJson.addProperty("KeyValuePairs", nodeData.size)
           nodeJson.add("Fingers", fingerJson)
-          //println(nodeJson)
           replyTo ! GetNodeSnapshotResponse(nodeJson)
           Behaviors.same
 
@@ -233,6 +219,7 @@ object ChordNode{
           replyTo ! FindKeyPredResponse(predId, predRef)
           Behaviors.same
 
+          //To find the sucessor of a key. The function uses the predecssors to find the successor of a key
         case FindKeySuccessor(replyTo,key) =>
           var succ: ActorRef[NodeCommand] = null
           val (predRef,predId)=findKeyPredecessor(key)
@@ -257,37 +244,16 @@ object ChordNode{
 
           }
           Behaviors.same
-
         case UpdateFingerTable(ref,id,i,key) =>
           // Check if the candidate node is between ith start and ith finger node
 
           var ithFingerId = fingerTable(i).nodeId
           var candidateId = id
           // Check for Zero crossover between candidate node and current ith finger node
-//          if (ithFingerId.<(nodeHash)) {
-//            ithFingerId = ithFingerId + BigInt(2).pow(M)
-//            if (candidateId.<(nodeHash)) {
-//              candidateId = candidateId + BigInt(2).pow(M)
-//            }
-//          }
-          //candidateId.>(nodeHash) && ithFingerId.>(candidateId)
           if (checkRange(false,nodeHash,ithFingerId,false,candidateId)) {
             // Check for Zero crossover between candidate node and ith finger start
-
-
-
             var ithStart = fingerTable(i).start
             candidateId = id
-
-            if(checkRange(false,ithStart,candidateId,false,nodeHash))
-
-//            if (candidateId.<(nodeHash)) {
-//              candidateId = candidateId + BigInt(2).pow(M)
-//              if (ithStart.<(nodeHash)) {
-//                ithStart = ithStart + BigInt(2).pow(M)
-//              }
-//            }
-              //ithStart.>(nodeHash) && ithStart.<(candidateId)
             if (checkRange(false,nodeHash,candidateId,false,ithStart)) {
               fingerTable(i).nodeId = id
               fingerTable(i).nodeRef = ref
@@ -311,6 +277,7 @@ object ChordNode{
           context.log.info("{} received write request by NODE ACTOR for key: {}, value: {}", context.self.path.name, key, value)
           Behaviors.same
 
+          //Function called when a  node wants to join the chord network
         case JoinNetwork(replyTo,networkRef) =>
           // We assume network has at least one node and so, networkRef is not null
           implicit val timeout: Timeout = Timeout(5 seconds)
@@ -327,31 +294,19 @@ object ChordNode{
               predecessorId = predId
               successor ! SetNodePredecessor(nodeHash,selfRef)
               predecessor ! SetNodeSuccessor(nodeHash,selfRef)
-//              println(getFingerTableStatus())
-              // Set the Finger table with current nodes in the network
-//              var gotFingerNode = new ListBuffer[Int]()
-//              gotFingerNode += 1
               for (i <- 1 until M) {
 
                 var lastSucc = fingerTable(i-1).nodeId
                 var curStart = fingerTable(i).start
-//                if (lastSucc.<(nodeHash)) {
-//                  lastSucc = lastSucc + BigInt(2).pow(M)
-//                  if (curStart.>(nodeHash) && curStart.<(nodeHash)) {
-//                    curStart = curStart + BigInt(2).pow(M)
-//                  }
-//                }
-                //lastSucc.>(nodeHash) && lastSucc.>=(curStart)
+
                 if (checkRange(false,nodeHash,curStart,false,lastSucc)) {
                   fingerTable(i).nodeId = fingerTable(i-1).nodeId
                   fingerTable(i).nodeRef = fingerTable(i-1).nodeRef
-//                  gotFingerNode += 1
                 }
                 else {
                   def askForNextKeySucc(ref:ActorRef[NodeCommand]) = FindKeySuccessor(ref,curStart)
                   context.ask(networkRef,askForNextKeySucc) {
                     case Success(FindKeySuccResponse(succId,succRef,predId,predRef)) => {
-//                      gotFingerNode(i) += 1
                       fingerTable(i).nodeRef = succRef
                       fingerTable(i).nodeId = succId
                       NodeAdaptedResponse()
@@ -364,14 +319,9 @@ object ChordNode{
                   }
                 }
               }
-//              Thread.sleep(10)
-//              while (gotFingerNode.size < M) {
-//                Thread.sleep((1))
-//              }
               updateFingerTablesOfOthers()
               context.log.info("{} added to chord network",nodeHash)
 
-//              context.log.info("Fingertable for {} => {}",nodeHash,getFingerTableStatus())
               replyTo ! JoinStatus("Success")
               NodeAdaptedResponse()
             }
