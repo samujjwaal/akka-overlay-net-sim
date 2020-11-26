@@ -12,12 +12,16 @@ object Main {
     //ActorSystem(ChordHttpServer(),"ChordServerSystem")
     //Thread.sleep(2000)
     //println("Starting user requests now...")
-    //ActorSystem(UserSystem(),"Users")
+    //ActorSystem(UserSystem(),"user-system")
 
     val system= ActorSystem("ChordActorSystemClassic")
     val classicActor=system.actorOf(ChordClassicNode.props(1),"chord-classic-actor")
     classicActor ! "Start actor"
 
+    val userSystem = ActorSystem("UserActorSystem")
+    val userMaster = userSystem.actorOf(UserMaster.props())
+    userMaster ! UserMaster.CreateUsers
+    userMaster ! UserMaster.StartUserRequests
 
 //    sys ! CaptureGlobalSnapshot()
 
