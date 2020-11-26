@@ -1,8 +1,12 @@
 package com.group11.hw3.chord
-
+import scala.concurrent.duration._
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.util.Timeout
+import akka.pattern.ask
+import com.group11.hw3.{CFindKeySuccResponse, CFindKeySuccessor, CFingerTableStatusResponse, CGetFingerTableStatus, CGetNodeSuccResponse, CGetNodeSuccessor, CJoinNetwork, CJoinStatus, CSetNodePredecessor, CSetNodeSuccessor, CUpdateFingerTable, FindCKeyPredResponse, FindCKeyPredecessor}
 
 import scala.collection.mutable
+import scala.concurrent.Await
 
 object ChordClassicNode {
   def props(nodeHash:BigInt):Props= {
@@ -51,6 +55,15 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
       }
     }
 
+  }
+
+  def updateFingerTablesOfOthers(): Unit = {
+    val M=nodeConf.getInt("nodeConstants.M")
+    for (i <- 0 until M ) {
+      var p = (nodeHash - BigInt(2).pow(i) + BigInt(2).pow(M) + 1) % BigInt(2).pow(M)
+      var (pred,predID)=findKeyPredecessor(p)
+      pred ! CUpdateFingerTable(self,nodeHash,i,p)
+    }
   }
 
   //Print finger table
@@ -139,10 +152,12 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
     resPredRef = closestPredRef
     resPredId = closestPredId
     if (!(closestPredId == nodeHash)) {
+      implicit val timeout: Timeout = Timeout(10.seconds)
+      val future = closestPredRef ? FindCKeyPredecessor(key)
+      val fingerNode = Await.result(future, timeout.duration).asInstanceOf[FindCKeyPredResponse]
+      resPredRef = fingerNode.predRef
+      resPredId = fingerNode.predId
 
-//      val future = closestPredRef ? FindKeyPredecessor(key)
-//      val fingerNode = Await.result(future, timeout.duration).asInstanceOf[FingerNodeRef]
-      //implicit val timeout: Timeout = Timeout(10.seconds)
 
 //      def getKeyPred(ref: ActorRef[NodeCommand]) = FindKeyPredecessor(ref, key)
 
@@ -164,8 +179,191 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
 
   }
 
+
   log.info("Classic actor created")
   override def receive: Receive = {
+    case FindCKeyPredecessor(key) =>
+      val (predRef, predId) = findKeyPredecessor(key)
+      // println("inside FindKeyPredecessor. got "+predId.toString)
+      sender ! FindCKeyPredResponse(predId, predRef)
+
+    case CGetFingerTableStatus() =>
+      sender ! CFingerTableStatusResponse(getFingerTableStatus())
+
+
+    case CGetNodeSuccessor() =>
+      sender ! CGetNodeSuccResponse(successorId,successor)
+
+    case CSetNodeSuccessor(id,ref) =>
+      successor = ref
+      successorId = id
+      fingerTable(0).nodeRef = ref
+      fingerTable(0).nodeId = id
+
+    case CSetNodePredecessor(id,ref) =>
+      predecessor = ref
+      predecessorId = id
+
+
+    case CFindKeySuccessor(key) =>
+      var succ: ActorRef = null
+      val (predRef,predId)=findKeyPredecessor(key)
+      //          println("inside FindKeySuccessor. Got pred "+predId.toString)
+      if(predRef==self)
+      { // key if found between this node and it successor
+        sender ! CFindKeySuccResponse(successorId,successor,nodeHash,self)
+      }
+      else
+      { // key is found between node pred and its successor. Get pred's successor and reply with their ref
+
+        implicit val timeout: Timeout = Timeout(10.seconds)
+        val future = predRef ? CGetNodeSuccessor()
+        val nodeSuccessorResponse = Await.result(future, timeout.duration).asInstanceOf[CGetNodeSuccResponse]
+
+        sender ! CFindKeySuccResponse(nodeSuccessorResponse.nodeId,nodeSuccessorResponse.nodeRef,predId,predRef)
+
+//        implicit val timeout: Timeout = Timeout(10 seconds)
+//        def getNodeSucc(ref:ActorRef[NodeCommand]) = GetNodeSuccessor(ref)
+//        context.ask(predRef,getNodeSucc)
+//        {
+//          case Success(GetNodeSuccResponse(succId,succ)) =>
+//            replyTo ! FindKeySuccResponse(succId,succ,predId,predRef)
+//            NodeAdaptedResponse()
+//          case Failure(_) =>
+//            println("Failed to get Node Successor")
+//            NodeAdaptedResponse()
+//        }
+
+      }
+
+    case CUpdateFingerTable(ref,id,i,key) =>
+      // Check if the candidate node is between ith start and ith finger node
+
+      var ithFingerId = fingerTable(i).nodeId
+      var candidateId = id
+      // Check for Zero crossover between candidate node and current ith finger node
+      if (checkRange(false,nodeHash,ithFingerId,false,candidateId)) {
+        // Check for Zero crossover between candidate node and ith finger start
+        var ithStart = fingerTable(i).start
+        candidateId = id
+        if (checkRange(false,nodeHash,candidateId,false,ithStart)) {
+          fingerTable(i).nodeId = id
+          fingerTable(i).nodeRef = ref
+          // Also check if successor needs to be updated
+          if (i == 0) {
+            successorId = id
+            successor = ref
+          }
+        }
+        predecessor ! CUpdateFingerTable(ref,id,i,key)
+      }
+
+    case CJoinNetwork(networkRef) =>
+      // We assume network has at least one node and so, networkRef is not null
+
+      implicit val timeout: Timeout = Timeout(10.seconds)
+      val future = networkRef ? FindCKeyPredecessor(fingerTable(0).start)
+      val successorResp = Await.result(future, timeout.duration).asInstanceOf[CFindKeySuccResponse]
+
+      println("--- Finding succ --- Node :"+nodeHash.toString+" succ : "+successorResp.succId.toString)
+      fingerTable(0).nodeRef = successorResp.succRef
+      fingerTable(0).nodeId = successorResp.succId
+      successor = successorResp.succRef
+      successorId = successorResp.succId
+      predecessor = successorResp.predRef
+      predecessorId = successorResp.predId
+      successor ! CSetNodePredecessor(nodeHash,self)
+      predecessor ! CSetNodeSuccessor(nodeHash,self)
+      for (i <- 1 until nodeConf.getInt("nodeConstants.M")) {
+
+        var lastSucc = fingerTable(i-1).nodeId
+        var curStart = fingerTable(i).start
+
+        if (checkRange(false,nodeHash,curStart,false,lastSucc)) {
+          fingerTable(i).nodeId = fingerTable(i-1).nodeId
+          fingerTable(i).nodeRef = fingerTable(i-1).nodeRef
+        }
+        else {
+
+          implicit val timeout: Timeout = Timeout(10.seconds)
+          val future = networkRef ? CFindKeySuccessor(curStart)
+          val keySuccessorResp = Await.result(future, timeout.duration).asInstanceOf[CFindKeySuccResponse]
+          fingerTable(i).nodeRef = keySuccessorResp.succRef
+          fingerTable(i).nodeId = keySuccessorResp.succId
+
+//          def askForNextKeySucc(ref:ActorRef[NodeCommand]) = FindKeySuccessor(ref,curStart)
+//          context.ask(networkRef,askForNextKeySucc) {
+//            case Success(FindKeySuccResponse(succId,succRef,predId,predRef)) => {
+//              fingerTable(i).nodeRef = succRef
+//              fingerTable(i).nodeId = succId
+//
+//            }
+//            case Failure(_) => {
+//              fingerTable(i).nodeRef = selfRef
+//              fingerTable(i).nodeId = nodeHash
+//
+//            }
+          }
+        }
+      updateFingerTablesOfOthers()
+      log.info("{} added to chord network",nodeHash)
+
+      sender() ! CJoinStatus("Success")
+
+
+//      implicit val timeout: Timeout = Timeout(5 seconds)
+//      def askForKeySucc(ref:ActorRef) = FindKeySuccessor(ref,fingerTable(0).start)
+//      context.ask(networkRef,askForKeySucc)
+//      {
+//        case Success(FindKeySuccResponse(succId,succRef,predId,predRef)) => {
+//          println("--- Finding succ --- Node :"+nodeHash.toString+" succ : "+succId.toString)
+//          fingerTable(0).nodeRef = succRef
+//          fingerTable(0).nodeId = succId
+//          successor = succRef
+//          successorId = succId
+//          predecessor = predRef
+//          predecessorId = predId
+//          successor ! SetNodePredecessor(nodeHash,selfRef)
+//          predecessor ! SetNodeSuccessor(nodeHash,selfRef)
+//          for (i <- 1 until M) {
+//
+//            var lastSucc = fingerTable(i-1).nodeId
+//            var curStart = fingerTable(i).start
+//
+//            if (checkRange(false,nodeHash,curStart,false,lastSucc)) {
+//              fingerTable(i).nodeId = fingerTable(i-1).nodeId
+//              fingerTable(i).nodeRef = fingerTable(i-1).nodeRef
+//            }
+//            else {
+//              def askForNextKeySucc(ref:ActorRef[NodeCommand]) = FindKeySuccessor(ref,curStart)
+//              context.ask(networkRef,askForNextKeySucc) {
+//                case Success(FindKeySuccResponse(succId,succRef,predId,predRef)) => {
+//                  fingerTable(i).nodeRef = succRef
+//                  fingerTable(i).nodeId = succId
+//                  NodeAdaptedResponse()
+//                }
+//                case Failure(_) => {
+//                  fingerTable(i).nodeRef = selfRef
+//                  fingerTable(i).nodeId = nodeHash
+//                  NodeAdaptedResponse()
+//                }
+//              }
+//            }
+//          }
+//          updateFingerTablesOfOthers()
+//          context.log.info("{} added to chord network",nodeHash)
+//
+//          replyTo ! JoinStatus("Success")
+//
+//        }
+//        case Failure(_) => {
+//          replyTo ! JoinStatus("Failed")
+//
+//        }
+//      }
+
+
+
     case _ => log.info("Actor recieved message.")
   }
 

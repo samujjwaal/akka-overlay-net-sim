@@ -18,6 +18,7 @@ object Main {
     val classicActor=system.actorOf(ChordClassicNode.props(1),"chord-classic-actor")
     classicActor ! "Start actor"
 
+
 //    sys ! CaptureGlobalSnapshot()
 
   }
