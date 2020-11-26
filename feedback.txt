@@ -1,0 +1,10 @@
+Hi group 11,
+
+Your grade for HW3 is 15%.
+
+Comments:
+-1% for not testing message passing in either a synchronous or asynchronous setting.
++3% for the usage of typed Behaviors model for Akka actors.
++3% for a documenting your implementation and execution steps.
+
+Abhijeet Mohanty
