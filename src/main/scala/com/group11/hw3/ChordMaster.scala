@@ -1,21 +1,18 @@
 package com.group11.hw3
 import java.io.File
-
+import scala.language.postfixOps
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.google.gson.{GsonBuilder, JsonObject}
-import com.group11.hw3.utils.Utils
-import com.typesafe.config.Config
 import com.group11.hw3.chord._
-import com.group11.hw3.utils._
+import com.typesafe.config.Config
 import org.apache.commons.io.FileUtils
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
 
 object ChordMaster {
   case class CreateNodes()

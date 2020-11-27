@@ -16,10 +16,11 @@ class HTTPServer {
 
   val conf: Config = ConfigFactory.load("application.conf")
   val netConf = conf.getConfig("networkConstants")
-  implicit val chordSystem: ActorSystem = ActorSystem(netConf.getString("networkSystemName"))
+
   var bindingFuture: Future[Http.ServerBinding] = _
 
   def setupServer(chordSystem: ActorSystem, chordNodes: List[BigInt]): Unit = {
+    implicit val chordSystem: ActorSystem = ActorSystem(netConf.getString("networkSystemName"))
     implicit val materializer: ActorMaterializer = ActorMaterializer()
     //Define and start http server
     val route = path("chordRoot") {
