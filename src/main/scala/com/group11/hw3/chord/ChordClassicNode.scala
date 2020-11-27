@@ -5,13 +5,16 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import scala.collection.mutable
 
 object ChordClassicNode {
+  case class JoinNetwork(existingNode: ActorRef)
+  case class GetNodeSnapshot()
+
   def props(nodeHash:BigInt):Props= {
     Props(new ChordClassicNode(nodeHash:BigInt))
   }
 }
 
 class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
-
+  import ChordClassicNode._
   //implicit val timeout: Timeout = Timeout(Constants.defaultTimeout)
 
   val nodeConf=context.system.settings.config
@@ -164,8 +167,13 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
 
   }
 
+  def joinNetwork(existingNode: ActorRef): Unit = {
+
+  }
+
   log.info("Classic actor created")
   override def receive: Receive = {
+    case JoinNetwork(existingNode) => joinNetwork(existingNode)
     case _ => log.info("Actor recieved message.")
   }
 

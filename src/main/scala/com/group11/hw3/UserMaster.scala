@@ -19,14 +19,14 @@ object UserMaster {
 class UserMaster extends Actor with ActorLogging {
   import UserMaster._
 
-  val userConf: Config = context.system.settings.config
+  val conf: Config = context.system.settings.config
 
   //Read data from source file
   val dataSource: BufferedSource = Source.fromFile("src/main/resources/listfile.txt")
-  val data: List[String] = dataSource.getLines.slice(0,userConf.getInt("userConstants.totalRecords")).toList
-  val readData: List[String]  = data.slice ( 0, userConf.getInt("userConstants.recordsToRead") )
-  val writeData: List[String] = data.slice ( userConf.getInt("userConstants.recordsToRead"),
-                                             userConf.getInt("userConstants.totalRecords")
+  val data: List[String] = dataSource.getLines.slice(0,conf.getInt("userConstants.totalRecords")).toList
+  val readData: List[String]  = data.slice ( 0, conf.getInt("userConstants.recordsToRead") )
+  val writeData: List[String] = data.slice ( conf.getInt("userConstants.recordsToRead"),
+                                             conf.getInt("userConstants.totalRecords")
                                             )
 
   var UserRouter: ActorRef = _
@@ -41,7 +41,7 @@ class UserMaster extends Actor with ActorLogging {
     case StartUserRequests() => {
       //Generate and route requests
       var numRequest = 0
-      while (numRequest < userConf.getInt("userConstants.totalRequest")){
+      while (numRequest < conf.getInt("userConstants.totalRequest")){
         if (Utils.randomlySelectRequestType()) {
 
           val index = Utils.randomlySelectDataIndex(readData.size)
