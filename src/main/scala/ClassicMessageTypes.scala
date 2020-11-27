@@ -19,7 +19,7 @@ case class CFingerTableStatusResponse(ft: String)
 
 case class CUpdateFingerTable(nodeRef:ActorRef,nodeId:BigInt,i:Int,key:BigInt)
 
-case class CGetKeyValue(replyTo: ActorRef,key: String)
+case class CGetKeyValue(key: String)
 case class CWriteKeyValue(key: String, value: String)
 case class CDataResponse(message:String)
 
