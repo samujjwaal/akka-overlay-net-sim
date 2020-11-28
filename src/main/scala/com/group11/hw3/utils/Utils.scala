@@ -1,6 +1,8 @@
 package com.group11.hw3.utils
 
-import akka.actor.{ActorRef, ActorSelection, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem}
+
+import scala.collection.mutable
 
 object Utils {
   def randomlySelectRequestType(): Boolean = {
@@ -18,8 +20,13 @@ object Utils {
   }
 
 
-  def selectRandomNode(actorSystem: ActorSystem, nodes: List[BigInt]): ActorSelection = {
-    val index = scala.util.Random.nextInt(nodes.size)
-    actorSystem.actorSelection(nodes(index).toString())
+  def selectRandomNode(actorSystem: ActorSystem, nodes: mutable.HashMap[BigInt,ActorRef]): ActorRef = {
+    val keys=nodes.keys.toList
+    val index = scala.util.Random.nextInt(keys.size)
+
+    val key= keys(index)
+    nodes.get(key).head
+    //actorSystem.actorSelection(nodes(index).toString())
+
   }
 }

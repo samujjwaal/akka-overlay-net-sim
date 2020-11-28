@@ -1,6 +1,6 @@
 package com.group11.hw3
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives.{complete, concat, get, parameters, path, post}
 import akka.pattern.ask
@@ -9,6 +9,7 @@ import akka.util.Timeout
 import com.group11.hw3.utils.Utils
 import com.typesafe.config.{Config, ConfigFactory}
 
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
@@ -19,7 +20,7 @@ class HTTPServer {
 
   var bindingFuture: Future[Http.ServerBinding] = _
 
-  def setupServer(chordSystem: ActorSystem, chordNodes: List[BigInt]): Unit = {
+  def setupServer(chordSystem: ActorSystem, chordNodes: mutable.HashMap[BigInt,ActorRef]): Unit = {
     implicit val chordSystem: ActorSystem = ActorSystem(netConf.getString("networkSystemName"))
     implicit val materializer: ActorMaterializer = ActorMaterializer()
     //Define and start http server
@@ -27,10 +28,13 @@ class HTTPServer {
       concat(
         get {
           parameters("name".asInstanceOf[String]) { key =>
+
+            println("Received read request by HTTP server")
             val node = Utils.selectRandomNode(chordSystem, chordNodes)
             var msgReply = ""
 
             implicit val timeout: Timeout = Timeout(10.seconds)
+            println("--"+node.path)
             val future = node ? CGetKeyValue(key)
             val readValResp = Await.result(future, timeout.duration).asInstanceOf[CDataResponse]
             msgReply=readValResp.message
@@ -53,6 +57,7 @@ class HTTPServer {
         post {
           parameters("name".asInstanceOf[String],"val".asInstanceOf[String]) { (key,value) =>
 
+            println("Received write request by HTTP server")
             val node = Utils.selectRandomNode(chordSystem, chordNodes)
             node ! CWriteKeyValue(key,value)
 //            val index=r.nextInt(NodeConstants.numNodes)

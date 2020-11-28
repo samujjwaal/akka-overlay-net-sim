@@ -11,13 +11,11 @@ import scala.io.{BufferedSource, Source}
  * Factory to create the User Actor System
  */
 object UserMaster {
-  case class CreateUsers()
-  case class StartUserRequests()
+
   def props(): Props = Props(new UserMaster)
 }
 
 class UserMaster extends Actor with ActorLogging {
-  import UserMaster._
 
   val conf: Config = context.system.settings.config
 
@@ -32,28 +30,39 @@ class UserMaster extends Actor with ActorLogging {
   var UserRouter: ActorRef = _
 
   def createUserRouter(): Unit = {
+    log.info("Creating user router.")
+    println("Creating user router.")
     UserRouter = context.actorOf(FromConfig.props(User.props()),"user-router")
   }
 
   override def receive: Receive = {
-    case CreateUsers() => createUserRouter()
+    case CreateUsers =>
+      {
+        log.info("Received message create users.")
+        println("Received message create users.")
+        createUserRouter()
+      }
 
-    case StartUserRequests() => {
+    case StartUserRequests => {
       //Generate and route requests
       var numRequest = 0
       while (numRequest < conf.getInt("userConstants.totalRequest")){
         if (Utils.randomlySelectRequestType()) {
 
           val index = Utils.randomlySelectDataIndex(readData.size)
-          UserRouter ! ReadKey(readData(index).split(',')(0))
+          UserRouter ! CReadKey(readData(index).split(',')(0))
         }
         else {
           val index = Utils.randomlySelectDataIndex(writeData.size)
           val record = writeData(index).split(',')
-          UserRouter ! WriteValue(record(0),record(1))
+          UserRouter ! CWriteValue(record(0),record(1))
         }
         numRequest = numRequest + 1
       }
+    }
+
+    case _ => {
+      log.info("Usermaster received a generic message.")
     }
   }
 

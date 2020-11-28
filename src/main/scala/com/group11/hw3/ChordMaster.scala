@@ -1,6 +1,6 @@
 package com.group11.hw3
 import java.io.File
-import scala.language.postfixOps
+
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.pattern.ask
 import akka.util.Timeout
@@ -13,15 +13,14 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 object ChordMaster {
-  case class CreateNodes()
-  case class CaptureGlobalSnapshot()
+
   def props(): Props = Props(new ChordMaster)
 }
 
 class ChordMaster extends Actor with ActorLogging {
-  import ChordMaster._
 
   val conf: Config = context.system.settings.config
   val chordNodesId = new ListBuffer[BigInt]()
@@ -54,7 +53,12 @@ class ChordMaster extends Actor with ActorLogging {
 
   override def receive: Receive = {
 
-    case CreateNodes() => createNodes()
+    case CreateNodes =>
+      {
+        createNodes()
+        println("**"+sender.path)
+        sender ! CreateNodesReply(chordNodesRef)
+      }
 
     case CaptureGlobalSnapshot() =>
       println("**Received request for snapshot")
@@ -81,7 +85,7 @@ class ChordMaster extends Actor with ActorLogging {
 
       }
 
-    case _ => log.info("Received message.")
+    case _ => log.info("Received a generic message.")
 
   }
 }

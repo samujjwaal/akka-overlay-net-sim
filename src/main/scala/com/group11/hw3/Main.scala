@@ -1,8 +1,12 @@
 package com.group11.hw3
 
+import scala.concurrent.duration._
+import  akka.pattern.ask
 import akka.actor.ActorSystem
-import com.group11.hw3.chord.ChordClassicNode
+import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
+
+import scala.concurrent.Await
 
 /*
 Class used to test the basic working of the akka http server.
@@ -21,14 +25,24 @@ object Main {
 
     val chordSystem = ActorSystem(netConf.getString("networkSystemName"))
     val chordMaster = chordSystem.actorOf(ChordMaster.props())
-    chordMaster ! ChordMaster.CreateNodes
+    //chordMaster ! CreateNodes
+
+    implicit val timeout: Timeout = Timeout(10.seconds)
+    val future = chordMaster ? CreateNodes
+    val createNodesReply = Await.result(future, timeout.duration).asInstanceOf[CreateNodesReply]
+
 //    val classicActor=system.actorOf(ChordClassicNode.props(1),"chord-classic-actor")
 //    classicActor ! "Start actor"
 
+    val server = new HTTPServer()
+    server.setupServer(chordSystem,createNodesReply.nodeHash)
+
+    Thread.sleep(100)
+
     val userSystem = ActorSystem(userConf.getString("userSystemName"))
-    val userMaster = userSystem.actorOf(UserMaster.props())
-    userMaster ! UserMaster.CreateUsers
-    userMaster ! UserMaster.StartUserRequests
+    val userMaster = userSystem.actorOf(UserMaster.props(),"user-master")
+    userMaster ! CreateUsers
+    userMaster ! StartUserRequests
 
 //    sys ! CaptureGlobalSnapshot()
 

@@ -3,6 +3,8 @@ package com.group11.hw3
 import akka.actor.ActorRef
 import com.google.gson.JsonObject
 
+import scala.collection.mutable
+
 
 case class CReadKey(key: String)
 case class CWriteValue(key: String, value: String)
@@ -45,8 +47,13 @@ case class CCallFindPredResponse(predId: BigInt, predRef: ActorRef)
 case class CGetNodeSnapshot(ref:ActorRef)
 case class CGetNodeSnapshotResponse(snap:JsonObject)
 
+case class CreateNodes()
+case class CaptureGlobalSnapshot()
 
+case class CreateUsers()
+case class StartUserRequests()
 
+case class CreateNodesReply(nodeHash:mutable.HashMap[BigInt, ActorRef])
 
 case class CUpdateFingerTables()
 case class CWriteInitialData()

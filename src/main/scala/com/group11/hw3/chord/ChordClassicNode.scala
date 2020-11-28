@@ -3,7 +3,7 @@ import scala.concurrent.duration._
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.util.Timeout
 import akka.pattern.ask
-import com.group11.hw3.{CFindKeySuccResponse, CFindKeySuccessor, CFingerTableStatusResponse, CGetFingerTableStatus, CGetNodeSuccResponse, CGetNodeSuccessor, CJoinNetwork, CJoinStatus, CSetNodePredecessor, CSetNodeSuccessor, CUpdateFingerTable, FindCKeyPredResponse, FindCKeyPredecessor}
+import com.group11.hw3.{CDataResponse, CFindKeySuccResponse, CFindKeySuccessor, CFingerTableStatusResponse, CGetFingerTableStatus, CGetKeyValue, CGetNodeSuccResponse, CGetNodeSuccessor, CJoinNetwork, CJoinStatus, CSetNodePredecessor, CSetNodeSuccessor, CUpdateFingerTable, CWriteKeyValue, FindCKeyPredResponse, FindCKeyPredecessor}
 
 import scala.collection.mutable
 import scala.concurrent.Await
@@ -22,7 +22,7 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
   //implicit val timeout: Timeout = Timeout(Constants.defaultTimeout)
 
   val nodeConf=context.system.settings.config
-  val ringSize= BigInt(2).pow(nodeConf.getInt("nodeConstants.M"))
+  val ringSize= BigInt(2).pow(nodeConf.getInt("networkConstants.M"))
 
   var successor:ActorRef= self
   var predecessor:ActorRef=self
@@ -31,7 +31,7 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
   var successorId: BigInt = nodeHash
 
   var nodeData = new mutable.HashMap[BigInt,Int]()
-  var fingerTable = new Array[ClassicFinger](nodeConf.getInt("nodeConstants.M"))
+  var fingerTable = new Array[ClassicFinger](nodeConf.getInt("networkConstants.M"))
 
   fingerTable.indices.foreach(i =>{
     val start:BigInt = (nodeHash + BigInt(2).pow(i)) % ringSize
@@ -61,7 +61,7 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
   }
 
   def updateFingerTablesOfOthers(): Unit = {
-    val M=nodeConf.getInt("nodeConstants.M")
+    val M=nodeConf.getInt("networkConstants.M")
     for (i <- 0 until M ) {
       var p = (nodeHash - BigInt(2).pow(i) + BigInt(2).pow(M) + 1) % BigInt(2).pow(M)
       var (pred,predID)=findKeyPredecessor(p)
@@ -283,7 +283,7 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
       predecessorId = successorResp.predId
       successor ! CSetNodePredecessor(nodeHash,self)
       predecessor ! CSetNodeSuccessor(nodeHash,self)
-      for (i <- 1 until nodeConf.getInt("nodeConstants.M")) {
+      for (i <- 1 until nodeConf.getInt("networkConstants.M")) {
 
         var lastSucc = fingerTable(i-1).nodeId
         var curStart = fingerTable(i).start
@@ -374,7 +374,19 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
 
 
     case JoinNetwork(existingNode) => joinNetwork(existingNode)
-    case _ => log.info("Actor recieved message.")
+
+    case CGetKeyValue(key: String) =>
+      {
+        println("Dummy value for "+key)
+        sender() ! CDataResponse("Dummy value for "+key)
+      }
+
+    case CWriteKeyValue(key: String, value: String) =>
+      {
+        println("Received write request by classic chord node actor for:"+key+","+value)
+        log.info("Received write request by classic chord node actor for:"+key+","+value)
+      }
+    case _ => log.info("Chord node actor recieved a generic message.")
   }
 
 }
