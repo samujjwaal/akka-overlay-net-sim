@@ -180,10 +180,10 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
     case CJoinNetwork(networkRef) => {
       // We assume network has at least one node and so, networkRef is not null
 
-      println("Join network called.")
+      println("Join network called for node "+nodeHash.toString)
 
       this.poc = networkRef
-      implicit val timeout: Timeout = Timeout(10.seconds)
+      implicit val timeout: Timeout = Timeout(5.seconds)
       val future = poc ? CFindKeySuccessor(fingerTable(0).start)
       val successorResp = Await.result(future, timeout.duration).asInstanceOf[CFindKeySuccResponse]
 
@@ -198,6 +198,7 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
       predecessor ! CSetNodeSuccessor(nodeHash, self)
       for (i <- 1 until numFingers) {
 
+        println("updating finger "+i+" for node "+nodeHash.toString)
         val lastSucc = fingerTable(i - 1).nodeId
         val curStart = fingerTable(i).start
 
@@ -207,7 +208,7 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
         }
         else {
 
-          implicit val timeout: Timeout = Timeout(10.seconds)
+          implicit val timeout: Timeout = Timeout(5.seconds)
           val future = poc ? CFindKeySuccessor(curStart)
           val keySuccessorResp = Await.result(future, timeout.duration).asInstanceOf[CFindKeySuccResponse]
           fingerTable(i).nodeRef = keySuccessorResp.succRef
@@ -218,7 +219,7 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
       println(getFingerTableStatus())
       updateFingerTablesOfOthers()
       log.info("{} added to chord network", nodeHash)
-
+      sender() ! CJoinStatus("Complete!")
     }
 
     case CFindKeySuccessor(key) => {

@@ -26,7 +26,7 @@ class ChordMaster extends Actor with ActorLogging {
   val chordNodesId = new ListBuffer[BigInt]()
   val chordNodesRef = new mutable.HashMap[BigInt,ActorRef]()
   val numNodes: Int = conf.getInt("networkConstants.numNodes")
-  implicit val timeout = Timeout(10 seconds)
+  implicit val timeout = Timeout(15 seconds)
 
   def createNodes(): Unit = {
     // Add a node to chord network to act as point of contact (poc) for all other nodes to join.
@@ -45,9 +45,20 @@ class ChordMaster extends Actor with ActorLogging {
         val newNode = context.actorOf(ChordClassicNode.props(hashID), hashID.toString())
         chordNodesId += hashID
         chordNodesRef.addOne(hashID,newNode)
-        newNode ! CJoinNetwork(existingNode)
+        val future = newNode ? CJoinNetwork(existingNode)
+        val joinStatus = Await.result(future,timeout.duration).asInstanceOf[CJoinStatus]
+        log.info("Join status "+joinStatus.status+" for node "+hashID.toString)
         Thread.sleep(100)
       }
+    }
+
+    println("All nodes created...")
+    Thread.sleep(100)
+    println("Printing all finger tables -----")
+    for (i <- chordNodesId) {
+      val future = chordNodesRef.get(i).head ? CGetFingerTableStatus()
+      val fingerStatus = Await.result(future, timeout.duration).asInstanceOf[CFingerTableStatusResponse]
+      println("Node : "+i.toString+" FT : "+fingerStatus.ft)
     }
   }
 
@@ -56,7 +67,6 @@ class ChordMaster extends Actor with ActorLogging {
     case CreateNodes =>
       {
         createNodes()
-        println("**"+sender.path)
         sender ! CreateNodesReply(chordNodesRef)
       }
 

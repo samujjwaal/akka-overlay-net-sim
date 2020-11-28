@@ -27,7 +27,7 @@ object Main {
     val chordMaster = chordSystem.actorOf(ChordMaster.props())
     //chordMaster ! CreateNodes
 
-    implicit val timeout: Timeout = Timeout(10.seconds)
+    implicit val timeout: Timeout = Timeout(20.seconds)
     val future = chordMaster ? CreateNodes
     val createNodesReply = Await.result(future, timeout.duration).asInstanceOf[CreateNodesReply]
 
