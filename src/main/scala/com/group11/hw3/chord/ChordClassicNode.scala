@@ -8,6 +8,7 @@ import com.group11.hw3.{CDataResponse, CFindKeyPredResponse, CFindKeyPredecessor
 import com.typesafe.config.Config
 import scala.collection.mutable
 import scala.concurrent.Await
+import scala.util.control.Breaks._
 
 object ChordClassicNode {
 
@@ -106,33 +107,33 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
   def findClosestPredInFT(key:BigInt):(ActorRef,BigInt) = {
     var resPredRef: ActorRef = self
     var resPredId: BigInt = nodeHash
-    // If my hash is equal to the key, return my predecessor
-    if (key == nodeHash) {
-      resPredRef = self
-      resPredId = nodeHash
-    }
-    else {
-      // Go through the finger table and find closest finger pointing to a node preceding the key
-      for (i <- fingerTable.indices) {
-        var index = fingerTable.size - i - 1
-        // check if we can form a seq nodeHash > finger node > key
-        // if yes, then return the node pointed by this finger
-        var currKey = key
-        var fingernode = fingerTable(index).nodeId
-        // Return the finger node if it matches the key
-        if (fingernode == currKey) {
-          resPredRef = fingerTable(index).nodeRef
-          resPredId = fingerTable(index).nodeId
-        }
-        else {
 
-          if (checkRange(false,nodeHash,currKey,false,fingernode)) {
-            resPredRef = fingerTable(index).nodeRef
-            resPredId = fingerTable(index).nodeId
-          }
+    // Assuming the key is not equal to my hash
+
+    // Go through the finger table and find the closest finger preceding the key
+    // Check if key is not found between any two fingers.
+    // If not, it is beyond the last finger, hence the last finger is the closest predecessor.
+    var found = false
+    breakable {
+      for (i <- 0 until numFingers - 1) {
+        val curFingernode = fingerTable(i).nodeId
+        val nextFingerNode = fingerTable(i + 1).nodeId
+        // If key is between current finger node and next finger node, then return current finger node
+        if (checkRange(false, curFingernode, nextFingerNode, true, key)) {
+          resPredRef = fingerTable(i).nodeRef
+          resPredId = fingerTable(i).nodeId
+          found = true
+          break
         }
       }
     }
+
+    // If key is beyond the last finger node, return the last finger node.
+    if (!found) {
+      resPredId = fingerTable(numFingers-1).nodeId
+      resPredRef = fingerTable(numFingers-1).nodeRef
+    }
+
     // If no closest node found in the finger table, return self
     (resPredRef,resPredId)
   }
