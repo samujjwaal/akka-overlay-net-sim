@@ -50,7 +50,7 @@ case class GetNodeSnapshotResponse(snap:JsonObject)
 trait ChordSystemCommand
 case class UpdateFingerTables() extends ChordSystemCommand
 case class WriteInitialData() extends ChordSystemCommand
-case class CaptureGlobalSnapshot() extends ChordSystemCommand
+//case class CaptureGlobalSnapshot() extends ChordSystemCommand
 
 //trait NodeRequest
 //case class FindNode(node: ActorRef[Nothing]) extends NodeRequest

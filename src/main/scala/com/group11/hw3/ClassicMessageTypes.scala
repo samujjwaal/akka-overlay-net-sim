@@ -59,10 +59,3 @@ case class CUpdateFingerTables()
 case class CWriteInitialData()
 case class CCaptureGlobalSnapshot()
 
-//trait NodeRequest
-//case class FindNode(node: ActorRef[Nothing]) extends NodeRequest
-//case class getKeyValue(key: String) extends NodeRequest
-//case class writeKeyValue(key: String, value: String) extends  NodeRequest
-//case class Response(message:String) extends NodeRequest
-
-//case class FindNode(node: ActorRef)

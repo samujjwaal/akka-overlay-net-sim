@@ -38,19 +38,7 @@ class HTTPServer {
             val future = node ? CGetKeyValue(key)
             val readValResp = Await.result(future, timeout.duration).asInstanceOf[CDataResponse]
             msgReply=readValResp.message
-//            def dataRequest(ref:ActorRef[DataResponse]) = GetKeyValue(ref, key)
-//
-//            context.ask(x.head,dataRequest)
-//            {
-//              case Success(DataResponse(message)) => {
-//                msgReply = message
-//                AdaptedDataResponse(msgReply)
-//              }
-//              case Failure(_) => {
-//                msgReply = "Could not find Key : "+key
-//                AdaptedDataResponse(msgReply)
-//              }
-//            }
+
             complete("Read/Get response:"+msgReply)
           }
         },
@@ -60,10 +48,7 @@ class HTTPServer {
             println("Received write request by HTTP server")
             val node = Utils.selectRandomNode(chordSystem, chordNodes)
             node ! CWriteKeyValue(key,value)
-//            val index=r.nextInt(NodeConstants.numNodes)
-//            val nodeHash=nodeList(index)
-//            val x=hashMap.get(nodeHash)
-//            x.head ! WriteKeyValue(key,value)
+
             complete("Post method done")
           }
 
