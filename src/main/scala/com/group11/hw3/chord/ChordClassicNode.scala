@@ -57,13 +57,13 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
       true
     }
     else if (leftValue < rightValue) {
-      if (valueToCheck == leftValue && leftInclude || valueToCheck == rightValue && rightInclude || (valueToCheck > leftValue && valueToCheck < rightValue)) {
+      if ((valueToCheck == leftValue && leftInclude) || (valueToCheck == rightValue && rightInclude) || (valueToCheck > leftValue && valueToCheck < rightValue)) {
         true
       } else {
         false
       }
     } else {
-      if (valueToCheck == leftValue && leftInclude || valueToCheck == rightValue && rightInclude || (valueToCheck > leftValue || valueToCheck < rightValue)) {
+      if ((valueToCheck == leftValue && leftInclude) || (valueToCheck == rightValue && rightInclude) || (valueToCheck > leftValue || valueToCheck < rightValue)) {
         true
       } else {
         false
@@ -146,54 +146,31 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
   def findKeyPredecessor(key:BigInt): (ActorRef, BigInt) = {
     var resPredRef: ActorRef = self
     var resPredId: BigInt = nodeHash
-    // If my hash is the same as key, return my predecessor
-    if (key == nodeHash) {
-      resPredRef = predecessor
-      resPredId = predecessorId
-    }
-    // If key == my successor, return self
-    if (key == successorId) {
+
+    // Check my immediate neighbors for the predecessor.
+    // If the key lies between my hash and my successor's hash, return myself
+    if (checkRange(leftInclude = false, nodeHash, successorId, rightInclude = true, key)) {
       resPredRef = self
       resPredId = nodeHash
     }
 
-    // Check if the key lies between my hash and my successor's hash
-    var succId = successorId
-    var currentKey = key
-
-    // If key is in the interval, return self as the predecessor
-    if (checkRange(false,nodeHash,succId,false,currentKey)) {
-      resPredRef = self
-      resPredId = nodeHash
-    }
-
-    // Check if key lies between my pred and my hash
-    currentKey = key
-    var myId = nodeHash
-
-    // If key is in this interval, return my predecessor
-    if (checkRange(false,predecessorId,myId,false,currentKey)) {
+    // If the key lies between my hash and my predecessor's hash, return my predecessor
+    else if (checkRange(leftInclude = false, predecessorId, nodeHash, rightInclude = true, key)) {
       resPredRef = predecessor
       resPredId = predecessorId
     }
 
-    // Find closest Id we can find in our finger table which lies before the key.
-    val (closestPredRef, closestPredId) = findClosestPredInFT(key)
-    // If we get a node other than self, we found a node closer to the key. Forward the req to get predecessor
-    resPredRef = closestPredRef
-    resPredId = closestPredId
-    if (!(closestPredId == nodeHash)) {
-      implicit val timeout: Timeout = Timeout(10.seconds)
-      val future = closestPredRef ? CFindKeyPredecessor(key)
-      val fingerNode = Await.result(future, timeout.duration).asInstanceOf[CFindKeyPredResponse]
-      resPredRef = fingerNode.predRef
-      resPredId = fingerNode.predId
-      (resPredRef,resPredId)
-    }
+    // Predecessor not found in immediate neighbors.
+    // Find closest predecessor in finger table and forward the request.
     else {
-      (resPredRef,resPredId)
+      val (fingerNodeRef, fingerNodeId) = findClosestPredInFT(key)
+      implicit val timeout: Timeout = Timeout(10.seconds)
+      val future = fingerNodeRef ? CFindKeyPredecessor(key)
+      val predNode = Await.result(future, timeout.duration).asInstanceOf[CFindKeyPredResponse]
+      resPredRef = predNode.predRef
+      resPredId = predNode.predId
     }
-
+    (resPredRef,resPredId)
   }
 
   log.info("Classic actor created")
@@ -256,18 +233,20 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
         keypredRef = predecessor
       }
       else {
-        (keypredRef, keypredId) = findKeyPredecessor(key)
+        val (ref, id) = findKeyPredecessor(key)
+        keypredRef = ref
+        keypredId = id
 //        println("inside FindKeySuccessor. Got pred " + keypredId.toString)
 
         if (keypredRef == self) {
-          // key if found between this node and it successor
+          // key is found between this node and it successor
           keysuccRef = successor
           keysuccId = successorId
           keypredId = nodeHash
           keypredRef = self
         }
         else {
-          // key is found between node pred and its successor. Get pred's successor and reply with their ref
+          // key is found between node keypred and its successor. Get keypred's successor and reply with their ref
           implicit val timeout: Timeout = Timeout(10.seconds)
           val future = keypredRef ? CGetNodeSuccessor()
           val nodeSuccessorResponse = Await.result(future, timeout.duration).asInstanceOf[CGetNodeSuccResponse]
