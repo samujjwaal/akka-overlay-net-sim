@@ -44,11 +44,11 @@ case class CGetNodeSuccResponse(nodeId: BigInt, nodeRef: ActorRef)
 case class CCallFindPredecessor(ref: ActorRef,key: BigInt)
 case class CCallFindPredResponse(predId: BigInt, predRef: ActorRef)
 
-case class CGetNodeSnapshot(ref:ActorRef)
+case class CGetNodeSnapshot()
 case class CGetNodeSnapshotResponse(snap:JsonObject)
 
 case class CreateNodes()
-case class CaptureGlobalSnapshot()
+//case class CaptureGlobalSnapshot()
 
 case class CreateUsers()
 case class StartUserRequests()
@@ -58,4 +58,5 @@ case class CreateNodesReply(nodeHash:mutable.HashMap[BigInt, ActorRef])
 case class CUpdateFingerTables()
 case class CWriteInitialData()
 case class CCaptureGlobalSnapshot()
+
 

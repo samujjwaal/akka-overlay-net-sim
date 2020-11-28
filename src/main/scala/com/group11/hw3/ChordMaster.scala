@@ -60,7 +60,7 @@ class ChordMaster extends Actor with ActorLogging {
         sender ! CreateNodesReply(chordNodesRef)
       }
 
-    case CaptureGlobalSnapshot() =>
+    case CCaptureGlobalSnapshot() =>
       println("**Received request for snapshot")
       val gson = new GsonBuilder().setPrettyPrinting().create()
       val nodesSnapshot = new JsonObject()
@@ -69,7 +69,7 @@ class ChordMaster extends Actor with ActorLogging {
 
       for (node <- chordNodesId) {
         val nodeRef = chordNodesRef.get(node).head
-        val future = nodeRef ? ChordClassicNode.GetNodeSnapshot()
+        val future = nodeRef ? CGetNodeSnapshot()
         try {
           val response = Await.result(future, timeout.duration).asInstanceOf[GetNodeSnapshotResponse]
           val nodeSnap = response.snap
