@@ -28,8 +28,8 @@ case class CDataResponse(message:String)
 case class CJoinNetwork(networkRef: ActorRef)
 case class CJoinStatus(status: String)
 
-case class FindCKeyPredecessor(key: BigInt)
-case class FindCKeyPredResponse(predId: BigInt, predRef: ActorRef)
+case class CFindKeyPredecessor(key: BigInt)
+case class CFindKeyPredResponse(predId: BigInt, predRef: ActorRef)
 
 case class CFindKeySuccessor(key: BigInt)
 case class CFindKeySuccResponse(succId: BigInt,succRef: ActorRef, predId: BigInt, predRef: ActorRef)

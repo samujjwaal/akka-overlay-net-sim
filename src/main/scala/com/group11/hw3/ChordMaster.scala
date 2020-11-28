@@ -45,7 +45,7 @@ class ChordMaster extends Actor with ActorLogging {
         val newNode = context.actorOf(ChordClassicNode.props(hashID), hashID.toString())
         chordNodesId += hashID
         chordNodesRef.addOne(hashID,newNode)
-        newNode ! ChordClassicNode.JoinNetwork(existingNode)
+        newNode ! CJoinNetwork(existingNode)
         Thread.sleep(100)
       }
     }
