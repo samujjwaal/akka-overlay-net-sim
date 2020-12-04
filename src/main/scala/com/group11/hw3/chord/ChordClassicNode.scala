@@ -4,8 +4,9 @@ import scala.concurrent.duration._
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.util.Timeout
 import akka.pattern.ask
-import com.group11.hw3.{CDataResponse, CFindKeyPredResponse, CFindKeyPredecessor, CFindKeySuccResponse, CFindKeySuccessor, CFingerTableStatusResponse, CGetFingerTableStatus, CGetKeyValue, CGetNodeSuccResponse, CGetNodeSuccessor, CJoinNetwork, CJoinStatus, CSetNodePredecessor, CSetNodeSuccessor, CUpdateFingerTable, CWriteKeyValue}
+import com.group11.hw3._
 import com.typesafe.config.Config
+
 import scala.collection.mutable
 import scala.concurrent.Await
 import scala.util.control.Breaks._
@@ -79,9 +80,9 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
   def updateFingerTablesOfOthers(): Unit = {
     val M=nodeConf.getInt("networkConstants.M")
     for (i <- 0 until M ) {
-      var p = (nodeHash - BigInt(2).pow(i) + BigInt(2).pow(M) + 1) % BigInt(2).pow(M)
-      var (pred,predID)=findKeyPredecessor(p)
-      pred ! CUpdateFingerTable(self,nodeHash,i,p)
+      val p = (nodeHash - BigInt(2).pow(i) + BigInt(2).pow(M) + 1) % BigInt(2).pow(M)
+//      var (pred,predID)=findKeyPredecessor(p)
+      successor ! CUpdateFingerTable(self,nodeHash,i,p)
     }
   }
 
@@ -184,21 +185,21 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
 
       this.poc = networkRef
       implicit val timeout: Timeout = Timeout(5.seconds)
-      val future = poc ? CFindKeySuccessor(fingerTable(0).start)
-      val successorResp = Await.result(future, timeout.duration).asInstanceOf[CFindKeySuccResponse]
+      val future = poc ? CGetNodeNeighbors(nodeHash)
+      val nodeNbrResp = Await.result(future, timeout.duration).asInstanceOf[CGetNodeNeighborsResponse]
 
-      println("--- Finding succ --- Node :" + nodeHash.toString + " succ : " + successorResp.succId.toString)
-      fingerTable(0).nodeRef = successorResp.succRef
-      fingerTable(0).nodeId = successorResp.succId
-      successor = successorResp.succRef
-      successorId = successorResp.succId
-      predecessor = successorResp.predRef
-      predecessorId = successorResp.predId
+      println("--- Finding succ --- Node :" + nodeHash.toString + " succ : " + nodeNbrResp.succId.toString)
+      fingerTable(0).nodeRef = nodeNbrResp.succRef
+      fingerTable(0).nodeId = nodeNbrResp.succId
+      successor = nodeNbrResp.succRef
+      successorId = nodeNbrResp.succId
+      predecessor = nodeNbrResp.predRef
+      predecessorId = nodeNbrResp.predId
       successor ! CSetNodePredecessor(nodeHash, self)
       predecessor ! CSetNodeSuccessor(nodeHash, self)
       for (i <- 1 until numFingers) {
 
-        println("updating finger "+i+" for node "+nodeHash.toString)
+//        println("updating finger "+i+" for node "+nodeHash.toString)
         val lastSucc = fingerTable(i - 1).nodeId
         val curStart = fingerTable(i).start
 
@@ -209,10 +210,10 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
         else {
 
           implicit val timeout: Timeout = Timeout(5.seconds)
-          val future = poc ? CFindKeySuccessor(curStart)
-          val keySuccessorResp = Await.result(future, timeout.duration).asInstanceOf[CFindKeySuccResponse]
-          fingerTable(i).nodeRef = keySuccessorResp.succRef
-          fingerTable(i).nodeId = keySuccessorResp.succId
+          val future = poc ? CGetNodeNeighbors(curStart)
+          val nodeNbrResp = Await.result(future, timeout.duration).asInstanceOf[CGetNodeNeighborsResponse]
+          fingerTable(i).nodeRef = nodeNbrResp.succRef
+          fingerTable(i).nodeId = nodeNbrResp.succId
 
         }
       }
@@ -220,6 +221,36 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
       updateFingerTablesOfOthers()
       log.info("{} added to chord network", nodeHash)
       sender() ! CJoinStatus("Complete!")
+    }
+
+    case CGetNodeNeighbors(key) => {
+      var nodesuccRef: ActorRef = null
+      var nodesuccId: BigInt = null
+      var nodepredRef: ActorRef = null
+      var nodepredId: BigInt = null
+      if (checkRange(false, nodeHash, successorId, true, key)) {
+        nodesuccRef = successor
+        nodesuccId = successorId
+        nodepredRef = self
+        nodepredId = nodeHash
+      }
+      else if (checkRange(false, predecessorId, nodeHash, true, key)) {
+        nodesuccRef = self
+        nodesuccId = nodeHash
+        nodepredRef = predecessor
+        nodepredId = predecessorId
+      }
+      else {
+        val (next_pocRef, next_pocId) = findClosestPredInFT(key)
+        implicit val timeout: Timeout = Timeout(5.seconds)
+        val future = next_pocRef ? CGetNodeNeighbors(key)
+        val nodeNbrResp = Await.result(future, timeout.duration).asInstanceOf[CGetNodeNeighborsResponse]
+        nodesuccRef = nodeNbrResp.succRef
+        nodesuccId = nodeNbrResp.succId
+        nodepredRef = nodeNbrResp.predRef
+        nodepredId = nodeNbrResp.predId
+      }
+      sender ! CGetNodeNeighborsResponse(nodesuccId,nodesuccRef,nodepredId,nodepredRef)
     }
 
     case CFindKeySuccessor(key) => {
@@ -281,26 +312,18 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
       predecessorId = id
     }
 
-    case CUpdateFingerTable(ref,id,i,key) => {
-      // Check if the candidate node is between ith start and ith finger node
-
-      var ithFingerId = fingerTable(i).nodeId
-      var candidateId = id
-      // Check for Zero crossover between candidate node and current ith finger node
-      if (checkRange(false, nodeHash, ithFingerId, false, candidateId)) {
-        // Check for Zero crossover between candidate node and ith finger start
-        var ithStart = fingerTable(i).start
-        candidateId = id
-        if (checkRange(false, nodeHash, candidateId, false, ithStart)) {
-          fingerTable(i).nodeId = id
-          fingerTable(i).nodeRef = ref
-          // Also check if successor needs to be updated
-          if (i == 0) {
-            successorId = id
-            successor = ref
+    case CUpdateFingerTable(ref,id,i,pos) => {
+      if (ref != self) {
+        if (checkRange(leftInclude = false, nodeHash, fingerTable(0).nodeId, rightInclude = true, pos)) {
+          if (checkRange(leftInclude = false, nodeHash, fingerTable(i).nodeId, rightInclude = false, id)) {
+            fingerTable(i).nodeRef = ref
+            fingerTable(i).nodeId = id
+            predecessor ! CUpdateFingerTable(ref, id,i,nodeHash)
           }
+        } else {
+          val (nextPredRef,nextPredId) = findClosestPredInFT(pos)
+          nextPredRef ! CUpdateFingerTable(ref, id,i,pos)
         }
-        predecessor ! CUpdateFingerTable(ref, id, i, key)
       }
     }
 

@@ -9,6 +9,8 @@ import scala.collection.mutable
 case class CReadKey(key: String)
 case class CWriteValue(key: String, value: String)
 
+case class CGetNodeNeighbors(key: BigInt)
+case class CGetNodeNeighborsResponse(succId: BigInt,succRef: ActorRef, predId: BigInt, predRef: ActorRef)
 
 case class CNodeAdaptedResponse()
 case class CGetNodeIndex()
