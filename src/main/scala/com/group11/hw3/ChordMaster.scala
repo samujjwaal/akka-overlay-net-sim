@@ -10,10 +10,11 @@ import com.typesafe.config.Config
 import org.apache.commons.io.FileUtils
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.Random
 
 object ChordMaster {
 
@@ -60,6 +61,29 @@ class ChordMaster extends Actor with ActorLogging {
       val fingerStatus = Await.result(future, timeout.duration).asInstanceOf[CFingerTableStatusResponse]
       println("Node : "+i.toString+" FT : "+fingerStatus.ft)
     }
+
+
+    //Writing initial data to nodes
+    val dataList = new ArrayBuffer[Array[String]]()
+    dataList.addOne(Array("1", "1998"))
+    dataList.addOne(Array("7", "2000"))
+    dataList.addOne(Array("4", "1996"))
+    dataList.addOne(Array("5", "1920"))
+      dataList.foreach(data => {
+        val key = data(0)
+        val value = data(1)
+        val rnd = new Random
+        val randomNum = 0 + rnd.nextInt((chordNodesId.size - 0) + 1)
+        val randNode= chordNodesRef.get(0)
+        randNode.head ! CFindNodeToWriteData(key.toInt, value.toInt)
+        //initialWriteCounter.addAndGet(1)
+      })
+
+      // Wait for 1 second to ensure all the data is written to the system
+      Thread.sleep(1000)
+
+      //log.info("Number of key value pairs written initially to the chord system during setup : %s".format(initialWriteCounter.get))
+
   }
 
   override def receive: Receive = {

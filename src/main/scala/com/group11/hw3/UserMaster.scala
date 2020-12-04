@@ -26,7 +26,8 @@ class UserMaster extends Actor with ActorLogging {
   val writeData: List[String] = data.slice ( conf.getInt("userConstants.recordsToRead"),
                                              conf.getInt("userConstants.totalRecords")
                                             )
-
+  val readData2:List[String] = List("1,1998","7,2000","4,1996")
+  val writeData2:List[String] = List("3,2013","2,2020")
   var UserRouter: ActorRef = _
 
   def createUserRouter(): Unit = {
@@ -49,13 +50,13 @@ class UserMaster extends Actor with ActorLogging {
       while (numRequest < conf.getInt("userConstants.totalRequest")){
         if (Utils.randomlySelectRequestType()) {
 
-          val index = Utils.randomlySelectDataIndex(readData.size)
-          UserRouter ! CReadKey(readData(index).split(',')(0))
+          val index = Utils.randomlySelectDataIndex(readData2.size)
+          UserRouter ! CReadKey(readData2(index).split(',')(0))
         }
         else {
-          val index = Utils.randomlySelectDataIndex(writeData.size)
-          val record = writeData(index).split(',')
-          UserRouter ! CWriteValue(record(0),record(1))
+          val index = Utils.randomlySelectDataIndex(writeData2.size)
+          val record = writeData2(index).split(',')
+          UserRouter ! CFindNodeToWriteData(BigInt(record(0)),record(1).toInt)
         }
         numRequest = numRequest + 1
       }

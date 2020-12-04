@@ -35,7 +35,7 @@ class HTTPServer {
 
             implicit val timeout: Timeout = Timeout(10.seconds)
             println("--"+node.path)
-            val future = node ? CGetKeyValue(key)
+            val future = node ? CGetKeyValue(key.toInt)
             val readValResp = Await.result(future, timeout.duration).asInstanceOf[CDataResponse]
             msgReply=readValResp.message
 

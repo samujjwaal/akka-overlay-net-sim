@@ -39,10 +39,10 @@ object Main {
 
     Thread.sleep(100)
 
-//    val userSystem = ActorSystem(userConf.getString("userSystemName"))
-//    val userMaster = userSystem.actorOf(UserMaster.props(),"user-master")
-//    userMaster ! CreateUsers
-//    userMaster ! StartUserRequests
+    val userSystem = ActorSystem(userConf.getString("userSystemName"))
+    val userMaster = userSystem.actorOf(UserMaster.props(),"user-master")
+    userMaster ! CreateUsers
+    userMaster ! StartUserRequests
 
 //    sys ! CaptureGlobalSnapshot()
 

@@ -331,16 +331,64 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
       sender ! CFingerTableStatusResponse(getFingerTableStatus())
     }
 
-    case CGetKeyValue(key: String) => {
+    case CGetKeyValue(key: Int) => {
       println("Dummy value for " + key)
-      sender() ! CDataResponse("Dummy value for " + key)
+
+      if (checkRange(leftInclude = false, predecessor.path.name.toInt, nodeHash, rightInclude = true, key)) {
+        if (nodeData.contains(key)) {
+          sender ! CDataResponse(nodeData(key).toString)
+        } else {
+          sender ! CDataResponse("Key not found!")
+        }
+      } else {
+        if (checkRange(leftInclude = false, nodeHash, fingerTable(0).nodeId, rightInclude = true, key)) {
+          implicit val timeout: Timeout = Timeout(10.seconds)
+          val future = fingerTable(0).nodeRef ? CGetValueFromNode(key)
+          val keyValue = Await.result(future, timeout.duration).asInstanceOf[CDataResponse]
+          sender ! CDataResponse(keyValue.message)
+        } else {
+          implicit val timeout: Timeout = Timeout(10.seconds)
+          val (target, dummy) = findClosestPredInFT(key)
+          val future = target ? CGetKeyValue(key)
+          val keyValue = Await.result(future, timeout.duration).asInstanceOf[CDataResponse]
+          sender ! CDataResponse(keyValue.message)
+        }
+      }
     }
+
+    case CGetValueFromNode(key: Int) =>
+
+      if (nodeData.contains(key)) {
+        sender ! CDataResponse(nodeData(key).toString)
+      } else {
+        sender ! CDataResponse("Data not found")
+      }
 
     case CWriteKeyValue(key: String, value: String) => {
       println("Received write request by classic chord node actor for:" + key + "," + value)
       log.info("Received write request by classic chord node actor for:" + key + "," + value)
     }
 
+    case CFindNodeToWriteData(key: BigInt, value: Int) => {
+
+      if (checkRange(leftInclude = false, nodeHash, fingerTable(0).nodeId, rightInclude = true, key)) {
+        println("!!!Found node"+nodeHash +"for key:"+key)
+        fingerTable(0).nodeRef ! CWriteDataToNode(key, value)
+      } else {
+        val (target, dummy) = findClosestPredInFT(key)
+        println("!!!Forwarding to node"+target.path.name +"for key:"+key)
+        target ! CFindNodeToWriteData(key, value)
+      }
+    }
+
+    case CWriteDataToNode(key: BigInt, value: Int) => {
+      log.info("Key %s  should be owned owned by node %s.".format(key, self.path.name))
+      if (nodeData.contains(key)) {
+        nodeData.update(key, value)
+      } else {
+        nodeData.addOne(key, value)
+      }
+    }
     case _ => log.info("Chord node actor recieved a generic message.")
 
   }
