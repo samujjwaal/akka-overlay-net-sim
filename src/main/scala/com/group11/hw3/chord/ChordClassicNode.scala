@@ -356,13 +356,14 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
       }
     }
 
-    case CGetValueFromNode(key: Int) =>
+    case CGetValueFromNode(key: Int) => {
 
       if (nodeData.contains(key)) {
         sender ! CDataResponse(nodeData(key).toString)
       } else {
         sender ! CDataResponse("Data not found")
       }
+    }
 
     case CWriteKeyValue(key: String, value: String) => {
       println("Received write request by classic chord node actor for:" + key + "," + value)
