@@ -10,4 +10,7 @@ object CanMessageTypes {
   case class GetNeighbors()
   case class GetCoord()
   case class SetCoord(l_x:Double,l_y:Double,u_x:Double,u_y:Double)
+
+  case class AddNeighbor(newNeighbor : Neighbor)
+  case class RemoveNeighbor( neighborToRemove : Neighbor)
 }
