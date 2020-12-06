@@ -59,32 +59,45 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
 
     /* TODO
     Assign proper id to neighbor
+    DONE..
     */
 
-    val incomingAsNeighbor= new Neighbor(newNode,incomingCoord,-1)
+    val incomingAsNeighbor= new Neighbor(newNode,incomingCoord,BigInt(newNode.path.name.toInt))
     myNeighbors.addOne(incomingAsNeighbor)
 
     /* TODO
      Assign proper id to self as neighbor
+     DONE..
      */
 
-    val selfAsNeighbor= new Neighbor(self, myCoord, -1)
+    val selfAsNeighbor= new Neighbor(self, myCoord, myId)
     newNode ! AddNeighbor(selfAsNeighbor)
-
+    var nbrToRemove = new ListBuffer[Neighbor]()
     for( n <- myNeighbors)
     {
-       if((incomingCoord.isAdjacentX(n.nodeCoord) && incomingCoord.isSubsetY(n.nodeCoord)) || (incomingCoord.isAdjacentY(n.nodeCoord) && incomingCoord.isSubsetX(n.nodeCoord)))
-         {
+      if((incomingCoord.isAdjacentX(n.nodeCoord) && incomingCoord.isSubsetY(n.nodeCoord)) ||
+          (incomingCoord.isAdjacentY(n.nodeCoord) && incomingCoord.isSubsetX(n.nodeCoord)))
+      {
+         n.nodeRef ! AddNeighbor(incomingAsNeighbor)
+         newNode ! AddNeighbor(n)
+      }
 
-           n.nodeRef ! AddNeighbor(incomingAsNeighbor)
-           newNode ! AddNeighbor(n)
-         }
+      /* TODO
+      If we are still neighbors, ask this neighbor to update my coordinate.
+      Otherwise remove my from its neighbors and remove this from my neighbors.
+       */
+      if((myCoord.isAdjacentX(n.nodeCoord) && myCoord.isSubsetY(n.nodeCoord)) ||
+          (myCoord.isAdjacentY(n.nodeCoord) && myCoord.isSubsetX(n.nodeCoord))) {
 
-      if((myCoord.isAdjacentX(n.nodeCoord) && myCoord.isSubsetY(n.nodeCoord)) || (myCoord.isAdjacentY(n.nodeCoord) && myCoord.isSubsetX(n.nodeCoord)))
-        {
-          n.nodeRef ! RemoveNeighbor(selfAsNeighbor)
-          myNeighbors.remove(myNeighbors.indexOf(n))
-        }
+      }
+      else {
+        n.nodeRef ! RemoveNeighbor(selfAsNeighbor)
+      /* TODO
+      Instead of deleting by index, we can use a seq to collect all nbrs to be deleted and remove them together
+       */
+        nbrToRemove.addOne(n)
+      }
+      myNeighbors --= nbrToRemove
     }
 
 
@@ -105,6 +118,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
   }
 
   override def receive: Receive = {
+
     case JoinCan(peer: ActorRef) => {
       if (peer == self) {
         myCoord = new Coordinate(xMax,yMax,0,0)
@@ -142,13 +156,13 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
       myCoord.setCoord(l_X, l_Y, u_X, u_Y)
     }
 
-    case AddNeighbor(newNeighbor : Neighbor) =>
-    {
+    case AddNeighbor(newNeighbor : Neighbor) => {
         myNeighbors.addOne(newNeighbor)
     }
-    case RemoveNeighbor(neighborToRemove : Neighbor) =>
-    {
+
+    case RemoveNeighbor(neighborToRemove : Neighbor) => {
         myNeighbors.remove(myNeighbors.indexOf(neighborToRemove))
     }
+
   }
 }
