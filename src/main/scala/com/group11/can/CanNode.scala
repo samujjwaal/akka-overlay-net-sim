@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import com.group11.can.CanMessageTypes._
 import com.typesafe.config.Config
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
 
@@ -20,8 +21,17 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
   val nodeConf: Config = context.system.settings.config.getConfig("CANnetworkConstants")
   val xMax: Double = nodeConf.getDouble("xMax")
   val yMax: Double = nodeConf.getDouble("yMax")
-  var myCoord: Coordinate = _
-  val myNeighbors = new ListBuffer[Neighbor]()
+  var myCoord: Coordinate = null
+  val myNeighbors = new mutable.HashMap[BigInt,Neighbor]()
+//  val myNeighbors = new ListBuffer[Neighbor]()
+
+  def nbrsAsString(): String = {
+    var str = ""
+    for (n <- myNeighbors) {
+      str += n._1.toString() + n._2.getAsString()
+    }
+    str
+  }
 
   def splitMyZone(newNode: ActorRef): Unit = {
 
@@ -31,7 +41,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
     var incomingLowerY=Double.MinValue
     if(myCoord.canSplitVertically)
     {
-      log.info("Splitting vertically.")
+      log.info("Splitting vertically for "+BigInt(newNode.path.name.toInt))
       val oldUpperX=myCoord.upperX
       myCoord.splitVertically()
 
@@ -44,7 +54,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
     }
     else
     {
-      log.info("Splitting horizontally.")
+      log.info("Splitting horizontally for "+BigInt(newNode.path.name.toInt))
       val oldUpperY=myCoord.upperY
       myCoord.splitHorizontally()
 
@@ -56,56 +66,52 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
       incomingUpperY=oldUpperY
     }
 
+    addNbr(newNode,incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY,BigInt(newNode.path.name.toInt))
+    newNode ! AddNeighbor(self,myCoord.lowerX:Double, myCoord.lowerY:Double, myCoord.upperX:Double, myCoord.upperY:Double, myId)
+
     val incomingCoord= new Coordinate(incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY)
 
-
-    val incomingAsNeighbor= new Neighbor(newNode,incomingCoord,BigInt(newNode.path.name.toInt))
-    myNeighbors.addOne(incomingAsNeighbor)
-
-
-    val selfAsNeighbor= new Neighbor(self, myCoord, myId)
-    newNode ! AddNeighbor(selfAsNeighbor)
-    var nbrToRemove = new ListBuffer[Neighbor]()
+    var nbrToRemove = new ListBuffer[BigInt]()
     for( n <- myNeighbors)
     {
-      if((incomingCoord.isAdjacentX(n.nodeCoord) && incomingCoord.isSubsetY(n.nodeCoord)) ||
-          (incomingCoord.isAdjacentY(n.nodeCoord) && incomingCoord.isSubsetX(n.nodeCoord)))
+      val nbrCoord = n._2.nodeCoord
+      if((incomingCoord.isAdjacentX(nbrCoord) && incomingCoord.isSubsetY(nbrCoord)) ||
+          (incomingCoord.isAdjacentY(nbrCoord) && incomingCoord.isSubsetX(nbrCoord)))
       {
-         n.nodeRef ! AddNeighbor(incomingAsNeighbor)
-         newNode ! AddNeighbor(n)
+         n._2.nodeRef ! AddNeighbor(newNode,incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY,BigInt(newNode.path.name.toInt))
+         newNode ! AddNeighbor(n._2.nodeRef,nbrCoord.lowerX,nbrCoord.lowerY,nbrCoord.upperX,nbrCoord.upperY,n._1)
       }
 
-      /* TODO
-      If we are still neighbors, ask this neighbor to update my coordinate.
-      Otherwise remove my from its neighbors and remove this from my neighbors.
-      DONE..
-       */
-      if((myCoord.isAdjacentX(n.nodeCoord) && myCoord.isSubsetY(n.nodeCoord)) ||
-          (myCoord.isAdjacentY(n.nodeCoord) && myCoord.isSubsetX(n.nodeCoord))) {
-          n.nodeRef ! UpdateNeighbor(selfAsNeighbor)
+      if((myCoord.isAdjacentX(nbrCoord) && myCoord.isSubsetY(nbrCoord)) ||
+          (myCoord.isAdjacentY(nbrCoord) && myCoord.isSubsetX(nbrCoord))) {
+        n._2.nodeRef ! UpdateNeighbor(myId: BigInt,
+                                      myCoord.lowerX:Double, myCoord.lowerY:Double,
+                                      myCoord.upperX:Double, myCoord.upperY:Double)
       }
       else {
-        n.nodeRef ! RemoveNeighbor(selfAsNeighbor)
-      /* TODO
-      Instead of deleting by index, we can use a seq to collect all nbrs to be deleted and remove them together
-       */
-        nbrToRemove.addOne(n)
+        n._2.nodeRef ! RemoveNeighbor(myId)
+        nbrToRemove.addOne(n._1)
       }
-
     }
     myNeighbors --= nbrToRemove
 
 
   }
 
+  def addNbr(nbrRef: ActorRef,lx:Double,ly:Double,ux:Double,uy:Double, nbrID: BigInt): Unit = {
+    val nbrCoord = new Coordinate(lx:Double,ly:Double,ux:Double,uy:Double)
+    val nbr = new Neighbor(nbrRef,nbrCoord,nbrID)
+    myNeighbors(nbrID) = nbr
+  }
+
   def findClosestNeighbor(p_x: Double, p_y: Double): Neighbor = {
     var closestNbr: Neighbor = null
     var dist = Double.MaxValue
     for (nbr <- myNeighbors) {
-      val nbrDist = nbr.nodeCoord.dist(p_x,p_y)
+      val nbrDist = nbr._2.nodeCoord.dist(p_x,p_y)
       if (nbrDist < dist) {
         dist = nbrDist
-        closestNbr = nbr
+        closestNbr = nbr._2
       }
     }
     closestNbr
@@ -114,24 +120,35 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
   override def receive: Receive = {
 
     case JoinCan(peer: ActorRef) => {
-      log.info("Join called for node:"+ peer.path.name)
+      println("Join called for node:"+ myId)
+//      log.info("Join called for node:"+ myId)
       if (peer == self) {
-        myCoord = new Coordinate(xMax,yMax,0,0)
+        myCoord = new Coordinate(0,0,xMax,yMax)
       }
       else {
         val p_x = scala.util.Random.nextDouble() * xMax
         val p_y = scala.util.Random.nextDouble() * yMax
+        println(p_x,p_y)
         peer ! RouteNewNode(p_x, p_y, self)
       }
+      Thread.sleep(1000)
+//      log.info("Joined node "+myId)
+//      log.info("node "+myId+" neighbors : "+nbrsAsString())
+//      log.info("node "+myId+" coords :"+myCoord.getAsString())
+      println("Joined node "+myId)
+      println("node "+myId+" neighbors : "+nbrsAsString())
+      println("node "+myId+" coords :"+myCoord.getAsString())
     }
 
     case RouteNewNode(p_x, p_y, newNode) => {
+      println("Route request received at "+myId)
+//      log.info("Route request received at "+myId)
       if (myCoord.hasPoint(p_x,p_y)) {
         log.info("Point lies in my zone, splitting my zone.")
         splitMyZone(newNode)
       }
       else {
-        log.info("Request forwarded to my closest neighbor.")
+        log.info("Not in my zone. Finding my closest neighbor to forward request.")
         val closestNeighbor = findClosestNeighbor(p_x,p_y)
         closestNeighbor.nodeRef ! RouteNewNode(p_x, p_y, newNode)
       }
@@ -150,25 +167,27 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
     }
 
     case SetCoord(l_X: Double, l_Y: Double, u_X:Double, u_Y:Double) => {
-      myCoord.setCoord(l_X, l_Y, u_X, u_Y)
+      if (myCoord == null) {
+        println("node "+myId+" my coord is null")
+        myCoord = new Coordinate(l_X, l_Y, u_X, u_Y)
+//        log.info("node "+myId+" coords :"+myCoord.getAsString())
+        println("------node "+myId+" coords :"+myCoord.getAsString())
+      }
+      else {
+        myCoord.setCoord(l_X, l_Y, u_X, u_Y)
+      }
     }
 
-    case AddNeighbor(newNeighbor : Neighbor) => {
-        myNeighbors.addOne(newNeighbor)
+    case AddNeighbor(nbrRef: ActorRef,lx:Double,ly:Double,ux:Double,uy:Double, nbrID: BigInt) => {
+      addNbr(nbrRef,lx,ly,ux,uy,nbrID)
     }
 
-    case RemoveNeighbor(neighborToRemove : Neighbor) => {
-        myNeighbors.remove(myNeighbors.indexOf(neighborToRemove))
+    case RemoveNeighbor(nbrID: BigInt) => {
+        myNeighbors.remove(nbrID)
     }
-    case UpdateNeighbor(neighborToUpdate : Neighbor) =>{
 
-        for(n <- myNeighbors)
-          {
-            if(n.nodeId == neighborToUpdate.nodeId)
-              {
-                myNeighbors.update(myNeighbors.indexOf(n),neighborToUpdate)
-              }
-          }
+    case UpdateNeighbor(nbrID: BigInt,lx:Double,ly:Double,ux:Double,uy:Double) => {
+      myNeighbors(nbrID).nodeCoord.setCoord(lx:Double,ly:Double,ux:Double,uy:Double)
     }
 
   }

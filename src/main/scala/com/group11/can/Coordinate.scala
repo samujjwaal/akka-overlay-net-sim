@@ -5,6 +5,10 @@ class Coordinate(var lowerX:Double, var lowerY:Double, var upperX:Double, var up
   var centerX: Double = (lowerX + upperX)/2
   var centerY: Double = (lowerY + upperY)/2
 
+  def getAsString() = {
+    " lx : "+lowerX.toString + " ly : "+lowerY.toString +" ux : "+upperX.toString +" uy : "+upperY.toString
+  }
+
   def setCoord(l_X: Double, l_Y: Double, u_X:Double, u_Y:Double) = {
     upperX = u_X
     upperY = u_Y
@@ -32,6 +36,8 @@ class Coordinate(var lowerX:Double, var lowerY:Double, var upperX:Double, var up
   }
 
   def hasPoint(p_x: Double, p_y: Double): Boolean = {
+    println(lowerX+" "+p_x+" "+upperX)
+    println(lowerY+" "+p_y+" "+upperY)
     lowerX<=p_x && p_x<upperX && lowerY<=p_y && p_y<upperY
   }
 
