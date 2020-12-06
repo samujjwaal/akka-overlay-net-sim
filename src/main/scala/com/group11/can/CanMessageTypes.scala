@@ -13,4 +13,5 @@ object CanMessageTypes {
 
   case class AddNeighbor(newNeighbor : Neighbor)
   case class RemoveNeighbor( neighborToRemove : Neighbor)
+  case class UpdateNeighbor(n: Neighbor)
 }

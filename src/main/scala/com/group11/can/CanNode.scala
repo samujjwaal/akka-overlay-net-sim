@@ -31,6 +31,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
     var incomingLowerY=Double.MinValue
     if(myCoord.canSplitVertically)
     {
+      log.info("Splitting vertically.")
       val oldUpperX=myCoord.upperX
       myCoord.splitVertically()
 
@@ -43,7 +44,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
     }
     else
     {
-
+      log.info("Splitting horizontally.")
       val oldUpperY=myCoord.upperY
       myCoord.splitHorizontally()
 
@@ -57,18 +58,10 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
 
     val incomingCoord= new Coordinate(incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY)
 
-    /* TODO
-    Assign proper id to neighbor
-    DONE..
-    */
 
     val incomingAsNeighbor= new Neighbor(newNode,incomingCoord,BigInt(newNode.path.name.toInt))
     myNeighbors.addOne(incomingAsNeighbor)
 
-    /* TODO
-     Assign proper id to self as neighbor
-     DONE..
-     */
 
     val selfAsNeighbor= new Neighbor(self, myCoord, myId)
     newNode ! AddNeighbor(selfAsNeighbor)
@@ -85,10 +78,11 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
       /* TODO
       If we are still neighbors, ask this neighbor to update my coordinate.
       Otherwise remove my from its neighbors and remove this from my neighbors.
+      DONE..
        */
       if((myCoord.isAdjacentX(n.nodeCoord) && myCoord.isSubsetY(n.nodeCoord)) ||
           (myCoord.isAdjacentY(n.nodeCoord) && myCoord.isSubsetX(n.nodeCoord))) {
-
+          n.nodeRef ! UpdateNeighbor(selfAsNeighbor)
       }
       else {
         n.nodeRef ! RemoveNeighbor(selfAsNeighbor)
@@ -97,9 +91,9 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
        */
         nbrToRemove.addOne(n)
       }
-      myNeighbors --= nbrToRemove
-    }
 
+    }
+    myNeighbors --= nbrToRemove
 
 
   }
@@ -120,6 +114,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
   override def receive: Receive = {
 
     case JoinCan(peer: ActorRef) => {
+      log.info("Join called for node:"+ peer.path.name)
       if (peer == self) {
         myCoord = new Coordinate(xMax,yMax,0,0)
       }
@@ -132,9 +127,11 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
 
     case RouteNewNode(p_x, p_y, newNode) => {
       if (myCoord.hasPoint(p_x,p_y)) {
+        log.info("Point lies in my zone, splitting my zone.")
         splitMyZone(newNode)
       }
       else {
+        log.info("Request forwarded to my closest neighbor.")
         val closestNeighbor = findClosestNeighbor(p_x,p_y)
         closestNeighbor.nodeRef ! RouteNewNode(p_x, p_y, newNode)
       }
@@ -162,6 +159,16 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
 
     case RemoveNeighbor(neighborToRemove : Neighbor) => {
         myNeighbors.remove(myNeighbors.indexOf(neighborToRemove))
+    }
+    case UpdateNeighbor(neighborToUpdate : Neighbor) =>{
+
+        for(n <- myNeighbors)
+          {
+            if(n.nodeId == neighborToUpdate.nodeId)
+              {
+                myNeighbors.update(myNeighbors.indexOf(n),neighborToUpdate)
+              }
+          }
     }
 
   }
