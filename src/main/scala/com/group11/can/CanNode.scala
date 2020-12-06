@@ -19,9 +19,9 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
   implicit val ec: ExecutionContext = context.dispatcher
 
   val nodeConf: Config = context.system.settings.config.getConfig("CANnetworkConstants")
-  val xMax = nodeConf.getInt("xMax")
-  val yMax = nodeConf.getInt("yMax")
-  var myCoord: Coordinate = null
+  val xMax: Double = nodeConf.getDouble("xMax")
+  val yMax: Double = nodeConf.getDouble("yMax")
+  var myCoord: Coordinate = _
   val myNeighbors = new ListBuffer[Neighbor]()
 
   def splitMyZone(newNode: ActorRef): Unit = {
