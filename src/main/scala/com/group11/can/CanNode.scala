@@ -1,12 +1,18 @@
 package com.group11.can
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.util.Timeout
+import akka.pattern.{ask,pipe}
+
 import com.group11.can.CanMessageTypes._
 import com.typesafe.config.Config
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.duration._
+import scala.language.postfixOps
+
 
 
 object CanNode {
@@ -34,7 +40,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
     str
   }
 
-  def splitMyZone(newNode: ActorRef): Unit = {
+  def splitMyZone(newNode: ActorRef) = {
 
     var incomingUpperX=Double.MinValue
     var incomingLowerX=Double.MinValue
@@ -46,7 +52,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
       val oldUpperX=myCoord.upperX
       myCoord.splitVertically()
 
-      newNode ! SetCoord(myCoord.upperX, myCoord.lowerY, oldUpperX, myCoord.upperY)
+//      newNode ! SetCoord(myCoord.upperX, myCoord.lowerY, oldUpperX, myCoord.upperY)
 
       incomingLowerX=myCoord.upperX
       incomingLowerY=myCoord.lowerY
@@ -95,7 +101,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
       }
     }
     myNeighbors --= nbrToRemove
-
+    (incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY)
 
   }
 
@@ -130,7 +136,11 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
         val p_x = scala.util.Random.nextDouble() * xMax
         val p_y = scala.util.Random.nextDouble() * yMax
         println(p_x,p_y)
-        peer ! RouteNewNode(p_x, p_y, self)
+        implicit val timeout = Timeout(10 seconds)
+        val future= peer ? RouteNewNode(p_x, p_y, self)
+        val coords = Await.result(future,timeout.duration).asInstanceOf[RouteResponse]
+        myCoord = new Coordinate(coords.lx,coords.ly,coords.ux,coords.uy)
+//        peer ! RouteNewNode(p_x, p_y, self)
       }
       sender() ! JoinDone("Done")
       //Thread.sleep(1000)
@@ -147,12 +157,14 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
 //      log.info("Route request received at "+myId)
       if (myCoord.hasPoint(p_x,p_y)) {
         log.info("Point lies in my zone, splitting my zone.")
-        splitMyZone(newNode)
+        val (lx,ly,ux,uy) = splitMyZone(newNode)
+        sender() ! RouteResponse(lx,ly,ux,uy)
       }
       else {
         log.info("Not in my zone. Finding my closest neighbor to forward request.")
         val closestNeighbor = findClosestNeighbor(p_x,p_y)
-        closestNeighbor.nodeRef ! RouteNewNode(p_x, p_y, newNode)
+        implicit val timeout = Timeout(10 seconds)
+        (closestNeighbor.nodeRef ? RouteNewNode(p_x, p_y, newNode)).pipeTo(sender())
       }
     }
 
@@ -169,17 +181,9 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
     }
 
     case SetCoord(l_X: Double, l_Y: Double, u_X:Double, u_Y:Double) => {
-      if (myCoord == null) {
-        println("node "+myId+" my coord is null")
-        myCoord = new Coordinate(l_X, l_Y, u_X, u_Y)
-//        log.info("node "+myId+" coords :"+myCoord.getAsString())
-        println("------node "+myId+" coords :"+myCoord.getAsString())
-      }
-      else {
-        println("node "+myId+" updating my coord")
-        myCoord.setCoord(l_X, l_Y, u_X, u_Y)
-        println("------node "+myId+" coords :"+myCoord.getAsString())
-      }
+      println("node " + myId + " updating my coord")
+      myCoord.setCoord(l_X, l_Y, u_X, u_Y)
+      println("------node " + myId + " coords :" + myCoord.getAsString())
     }
 
     case AddNeighbor(nbrRef: ActorRef,lx:Double,ly:Double,ux:Double,uy:Double, nbrID: BigInt) => {

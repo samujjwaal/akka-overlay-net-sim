@@ -16,5 +16,6 @@ object CanMessageTypes {
   case class UpdateNeighbor(nbrID: BigInt,lx:Double,ly:Double,ux:Double,uy:Double)
 
   case class JoinDone(message: String)
+  case class RouteResponse(lx:Double,ly:Double,ux:Double,uy:Double)
   case class PrintNeighbors()
 }
