@@ -114,8 +114,9 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
   override def receive: Receive = {
 
     case JoinCan(peer: ActorRef) => {
-      log.info("Join called for node:"+ peer.path.name)
+      log.info("Join called for node:"+ self.path.name)
       if (peer == self) {
+        log.info("First node, setting coordinates for:"+self.path.name)
         myCoord = new Coordinate(xMax,yMax,0,0)
       }
       else {
@@ -131,7 +132,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
         splitMyZone(newNode)
       }
       else {
-        log.info("Request forwarded to my closest neighbor.")
+        log.info("Request forwarded for "+self.path.name+" to my closest neighbor.")
         val closestNeighbor = findClosestNeighbor(p_x,p_y)
         closestNeighbor.nodeRef ! RouteNewNode(p_x, p_y, newNode)
       }
