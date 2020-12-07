@@ -30,7 +30,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
   val yMax: Double = nodeConf.getDouble("yMax")
   var myCoord: Coordinate = null
   val myNeighbors = new mutable.HashMap[BigInt,Neighbor]()
-//  val myNeighbors = new ListBuffer[Neighbor]()
+  val myData = new mutable.HashMap[(Double,Double),Int]()
 
   def nbrsAsString(): String = {
     var str = ""
@@ -127,15 +127,15 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
   override def receive: Receive = {
 
     case JoinCan(peer: ActorRef) => {
-      println("Join called for node:"+ myId)
-//      log.info("Join called for node:"+ myId)
+//      println("Join called for node:"+ myId)
+      log.info("Join called for node:"+ myId)
       if (peer == self) {
         myCoord = new Coordinate(0,0,xMax,yMax)
       }
       else {
         val p_x = scala.util.Random.nextDouble() * xMax
         val p_y = scala.util.Random.nextDouble() * yMax
-        println(p_x,p_y)
+//        println(p_x,p_y)
         implicit val timeout = Timeout(10 seconds)
         val future= peer ? RouteNewNode(p_x, p_y, self)
         val coords = Await.result(future,timeout.duration).asInstanceOf[RouteResponse]
@@ -143,18 +143,11 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
 //        peer ! RouteNewNode(p_x, p_y, self)
       }
       sender() ! JoinDone("Done")
-      //Thread.sleep(1000)
-//      log.info("Joined node "+myId)
-//      log.info("node "+myId+" neighbors : "+nbrsAsString())
-//      log.info("node "+myId+" coords :"+myCoord.getAsString())
-//      println("Joined node "+myId)
-//      println("node "+myId+" neighbors : "+nbrsAsString())
-//      println("node "+myId+" coords :"+myCoord.getAsString())
     }
 
     case RouteNewNode(p_x, p_y, newNode) => {
-      println("Route request received at "+myId)
-//      log.info("Route request received at "+myId)
+//      println("Route request received at "+myId)
+      log.info("Route request received at "+myId)
       if (myCoord.hasPoint(p_x,p_y)) {
         log.info("Point lies in my zone, splitting my zone.")
         val (lx,ly,ux,uy) = splitMyZone(newNode)
@@ -181,9 +174,9 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
     }
 
     case SetCoord(l_X: Double, l_Y: Double, u_X:Double, u_Y:Double) => {
-      println("node " + myId + " updating my coord")
+//      println("node " + myId + " updating my coord")
       myCoord.setCoord(l_X, l_Y, u_X, u_Y)
-      println("------node " + myId + " coords :" + myCoord.getAsString())
+//      println("------node " + myId + " coords :" + myCoord.getAsString())
     }
 
     case AddNeighbor(nbrRef: ActorRef,lx:Double,ly:Double,ux:Double,uy:Double, nbrID: BigInt) => {
@@ -197,11 +190,38 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
     case UpdateNeighbor(nbrID: BigInt,lx:Double,ly:Double,ux:Double,uy:Double) => {
       myNeighbors(nbrID).nodeCoord.setCoord(lx:Double,ly:Double,ux:Double,uy:Double)
     }
+
+    case WriteData(key:(Double,Double), value:Int) => {
+      println("WriteRequest at node "+myId+" for key "+key)
+      if (myCoord.hasPoint(key._1,key._2)) {
+        log.info("Point lies in "+myId+" write "+key+" to myData")
+        myData.addOne(key,value)
+      }
+      else {
+        val closestNeighbor = findClosestNeighbor(key._1,key._2)
+        closestNeighbor.nodeRef ! WriteData(key,value)
+      }
+    }
+
+    case ReadData(key:(Double,Double)) => {
+      println("ReadRequest at node "+myId+" for key "+key)
+      if (myCoord.hasPoint(key._1,key._2)) {
+        log.info("Point lies in "+myId+", get from myData")
+        log.info("key : "+key+" value : "+myData(key))
+      }
+      else {
+        val closestNeighbor = findClosestNeighbor(key._1,key._2)
+        closestNeighbor.nodeRef ! ReadData(key)
+      }
+    }
+
     case PrintNeighbors => {
-      println("Node ID:"+myId+" my neighbors are:"+myNeighbors.size)
+//      println("Node ID:"+myId+" my neighbors are:"+myNeighbors.size)
+      log.info("Node ID:"+myId+" my neighbors are:"+myNeighbors.size)
       for( n <- myNeighbors)
         {
-          println(myId+"'s neighbor:"+n._2.getAsString())
+//          println(myId+"'s neighbor:"+n._2.getAsString())
+          log.info(myId+"'s neighbor:"+n._2.getAsString())
         }
     }
 

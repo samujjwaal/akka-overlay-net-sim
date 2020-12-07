@@ -18,4 +18,7 @@ object CanMessageTypes {
   case class JoinDone(message: String)
   case class RouteResponse(lx:Double,ly:Double,ux:Double,uy:Double)
   case class PrintNeighbors()
+
+  case class WriteData(key:(Double,Double), value:Int)
+  case class ReadData(key:(Double,Double))
 }

@@ -36,8 +36,8 @@ class Coordinate(var lowerX:Double, var lowerY:Double, var upperX:Double, var up
   }
 
   def hasPoint(p_x: Double, p_y: Double): Boolean = {
-    println(lowerX+" "+p_x+" "+upperX)
-    println(lowerY+" "+p_y+" "+upperY)
+//    println(lowerX+" "+p_x+" "+upperX)
+//    println(lowerY+" "+p_y+" "+upperY)
     lowerX<=p_x && p_x<upperX && lowerY<=p_y && p_y<upperY
   }
 
