@@ -192,7 +192,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
     }
 
     case WriteData(key:(Double,Double), value:Int) => {
-      println("WriteRequest at node "+myId+" for key "+key)
+      log.info("WriteRequest at node "+myId+" for key "+key)
       if (myCoord.hasPoint(key._1,key._2)) {
         log.info("Point lies in "+myId+" write "+key+" to myData")
         myData.addOne(key,value)
@@ -204,7 +204,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
     }
 
     case ReadData(key:(Double,Double)) => {
-      println("ReadRequest at node "+myId+" for key "+key)
+      log.info("ReadRequest at node "+myId+" for key "+key)
       if (myCoord.hasPoint(key._1,key._2)) {
         log.info("Point lies in "+myId+", get from myData")
         log.info("key : "+key+" value : "+myData(key))

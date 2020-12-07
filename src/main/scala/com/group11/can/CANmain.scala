@@ -73,7 +73,7 @@ object CANmain {
     }
 
     Thread.sleep(100)
-    println("Initial data written to CAN.. Proceed to requests..")
+//    log.info("Initial data written to CAN.. Proceed to requests..")
 //    val readRequests = netConf.getInt("readRequests")
     val totalRequests = netConf.getInt("totalRequests")
 
