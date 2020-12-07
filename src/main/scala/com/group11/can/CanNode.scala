@@ -1,12 +1,16 @@
 package com.group11.can
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.pattern.ask
+import akka.util.Timeout
 import com.group11.can.CanMessageTypes._
 import com.typesafe.config.Config
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 object CanNode {
   def props(id:BigInt):Props= {
@@ -129,15 +133,18 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
         val p_x = scala.util.Random.nextDouble() * xMax
         val p_y = scala.util.Random.nextDouble() * yMax
         println(p_x,p_y)
-        peer ! RouteNewNode(p_x, p_y, self)
+        implicit val timeout = Timeout(10 seconds)
+        val future = peer ? RouteNewNode(p_x, p_y, self)
+        val  routingFinished= Await.result(future,timeout.duration).asInstanceOf[RoutingDone]
+        //peer ! RouteNewNode(p_x, p_y, self)
       }
-      Thread.sleep(1000)
+      //Thread.sleep(1000)
 //      log.info("Joined node "+myId)
 //      log.info("node "+myId+" neighbors : "+nbrsAsString())
 //      log.info("node "+myId+" coords :"+myCoord.getAsString())
-      println("Joined node "+myId)
-      println("node "+myId+" neighbors : "+nbrsAsString())
-      println("node "+myId+" coords :"+myCoord.getAsString())
+//      println("Joined node "+myId)
+//      println("node "+myId+" neighbors : "+nbrsAsString())
+//      println("node "+myId+" coords :"+myCoord.getAsString())
     }
 
     case RouteNewNode(p_x, p_y, newNode) => {
@@ -152,6 +159,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
         val closestNeighbor = findClosestNeighbor(p_x,p_y)
         closestNeighbor.nodeRef ! RouteNewNode(p_x, p_y, newNode)
       }
+      sender() ! RoutingDone("Done")
     }
 
     case GetNodeId() => {
@@ -174,7 +182,9 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
         println("------node "+myId+" coords :"+myCoord.getAsString())
       }
       else {
+        println("node "+myId+" updating my coord")
         myCoord.setCoord(l_X, l_Y, u_X, u_Y)
+        println("------node "+myId+" coords :"+myCoord.getAsString())
       }
     }
 

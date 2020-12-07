@@ -14,4 +14,6 @@ object CanMessageTypes {
   case class AddNeighbor(nbrRef: ActorRef,lx:Double,ly:Double,ux:Double,uy:Double, nbrID: BigInt)
   case class RemoveNeighbor(nbrID: BigInt)
   case class UpdateNeighbor(nbrID: BigInt,lx:Double,ly:Double,ux:Double,uy:Double)
+
+  case class RoutingDone(message: String)
 }
