@@ -207,7 +207,12 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
       log.info("ReadRequest at node "+myId+" for key "+key)
       if (myCoord.hasPoint(key._1,key._2)) {
         log.info("Point lies in "+myId+", get from myData")
-        log.info("key : "+key+" value : "+myData(key))
+        if (myData.contains(key)) {
+          log.info("key : " + key + " value : " + myData(key))
+        }
+        else {
+          log.info("Failed to find key in myData. Node : "+myId+" key : "+key)
+        }
       }
       else {
         val closestNeighbor = findClosestNeighbor(key._1,key._2)
