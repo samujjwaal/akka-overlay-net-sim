@@ -1,16 +1,13 @@
 package com.group11.can
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import akka.pattern.ask
-import akka.util.Timeout
 import com.group11.can.CanMessageTypes._
 import com.typesafe.config.Config
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Await, ExecutionContext}
-import scala.concurrent.duration._
-import scala.language.postfixOps
+import scala.concurrent.ExecutionContext
+
 
 object CanNode {
   def props(id:BigInt):Props= {
@@ -133,11 +130,9 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
         val p_x = scala.util.Random.nextDouble() * xMax
         val p_y = scala.util.Random.nextDouble() * yMax
         println(p_x,p_y)
-        implicit val timeout = Timeout(10 seconds)
-        val future = peer ? RouteNewNode(p_x, p_y, self)
-        val  routingFinished= Await.result(future,timeout.duration).asInstanceOf[RoutingDone]
-        //peer ! RouteNewNode(p_x, p_y, self)
+        peer ! RouteNewNode(p_x, p_y, self)
       }
+      sender() ! JoinDone("Done")
       //Thread.sleep(1000)
 //      log.info("Joined node "+myId)
 //      log.info("node "+myId+" neighbors : "+nbrsAsString())
@@ -159,7 +154,6 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
         val closestNeighbor = findClosestNeighbor(p_x,p_y)
         closestNeighbor.nodeRef ! RouteNewNode(p_x, p_y, newNode)
       }
-      sender() ! RoutingDone("Done")
     }
 
     case GetNodeId() => {
@@ -198,6 +192,13 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
 
     case UpdateNeighbor(nbrID: BigInt,lx:Double,ly:Double,ux:Double,uy:Double) => {
       myNeighbors(nbrID).nodeCoord.setCoord(lx:Double,ly:Double,ux:Double,uy:Double)
+    }
+    case PrintNeighbors => {
+      println("Node ID:"+myId+" my neighbors are:"+myNeighbors.size)
+      for( n <- myNeighbors)
+        {
+          println(myId+"'s neighbor:"+n._2.getAsString())
+        }
     }
 
   }

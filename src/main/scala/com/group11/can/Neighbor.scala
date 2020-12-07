@@ -7,7 +7,7 @@ class Neighbor(ref: ActorRef, coords: Coordinate, id: BigInt) {
   val nodeCoord: Coordinate = coords
   val nodeId: BigInt = id
 
-  def getAsString(): Unit = {
+  def getAsString(): String = {
     " nodeID : " + nodeId + nodeCoord.getAsString()
   }
 

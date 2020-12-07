@@ -6,7 +6,7 @@ class Coordinate(var lowerX:Double, var lowerY:Double, var upperX:Double, var up
   var centerY: Double = (lowerY + upperY)/2
 
   def getAsString() = {
-    " lx : "+lowerX.toString + " ly : "+lowerY.toString +" ux : "+upperX.toString +" uy : "+upperY.toString
+    " lx: "+lowerX.toString + " ly: "+lowerY.toString +" ux: "+upperX.toString +" uy: "+upperY.toString
   }
 
   def setCoord(l_X: Double, l_Y: Double, u_X:Double, u_Y:Double) = {
