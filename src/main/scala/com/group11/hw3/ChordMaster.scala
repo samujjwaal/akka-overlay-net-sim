@@ -44,17 +44,17 @@ class ChordMaster extends Actor with ActorLogging {
       if (!(chordNodesId.contains(hashID))) {
         val existingNode = poc
         val newNode = context.actorOf(ChordClassicNode.props(hashID), hashID.toString())
-        chordNodesId += hashID
-        chordNodesRef.addOne(hashID,newNode)
         val future = newNode ? CJoinNetwork(existingNode)
         val joinStatus = Await.result(future,timeout.duration).asInstanceOf[CJoinStatus]
         log.info("Join status "+joinStatus.status+" for node "+hashID.toString)
+        chordNodesId += hashID
+        chordNodesRef.addOne(hashID,newNode)
         Thread.sleep(100)
       }
     }
 
     println("All nodes created...")
-    Thread.sleep(100)
+    Thread.sleep(1000)
     println("Printing all finger tables -----")
     for (i <- chordNodesId) {
       val future = chordNodesRef.get(i).head ? CGetFingerTableStatus()
