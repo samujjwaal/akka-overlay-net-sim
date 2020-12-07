@@ -18,14 +18,15 @@ object CANmain {
     val newNode = chordSystem.actorOf(CanNode.props(id),id.toString)
     bootstrap.addOne(id,newNode)
     newNode ! JoinCan(bootstrap(0))
+
     Thread.sleep(10)
-    while (id < numNodes) {
+    while (id < numNodes-1) {
       id += 1
       val newNode = chordSystem.actorOf(CanNode.props(id),id.toString)
       val peer = bootstrap(scala.util.Random.nextInt(bootstrap.size))
       bootstrap.addOne(id,newNode)
       newNode ! JoinCan(peer)
-      Thread.sleep(100)
+      Thread.sleep(2000)
     }
 
 
