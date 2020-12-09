@@ -1,0 +1,12 @@
+image: bitbucketpipelines/scala-sbt:scala-2.12
+
+pipelines:
+  default:
+    - step:
+        script:
+          - sbt test
+          - docker login -u samcs441 -p $DOCKER_PASSWORD
+          - docker build -t samcs441/cs441_project:latest .
+          - docker push samcs441/cs441_project:latest
+        services:
+          - docker
