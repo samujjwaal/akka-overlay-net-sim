@@ -3,7 +3,7 @@ package com.group11.can
 import akka.actor.{ActorRef}
 
 object CanMessageTypes {
-  case class JoinCan(existingNode: ActorRef)
+  case class JoinCan(shardRegionRef: ActorRef, existingNode:BigInt)
   case class RouteNewNode(p_x: Double, p_y: Double, newNode: ActorRef)
 
   case class GetNodeId()
@@ -21,4 +21,6 @@ object CanMessageTypes {
 
   case class WriteData(key:(Double,Double), value:Int)
   case class ReadData(key:(Double,Double))
+
+  final case class EntityEnvelope(id: BigInt, payload: Any)
 }

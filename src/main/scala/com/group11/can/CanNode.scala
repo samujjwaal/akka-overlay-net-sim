@@ -1,9 +1,9 @@
 package com.group11.can
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.cluster.sharding.ShardRegion
 import akka.util.Timeout
-import akka.pattern.{ask,pipe}
-
+import akka.pattern.{ask, pipe}
 import com.group11.can.CanMessageTypes._
 import com.typesafe.config.Config
 
@@ -17,12 +17,25 @@ import scala.language.postfixOps
 
 object CanNode {
   def props(id:BigInt):Props= {
-    Props(new CanNode(id:BigInt))
+    Props(new CanNode())
+  }
+  val numberOfShards=100
+  val extractEntityId: ShardRegion.ExtractEntityId = {
+    case EntityEnvelope(id, payload) => (id.toString, payload)
+    //case msg @ Get(id)               => (id.toString, msg)
   }
 
+
+  val extractShardId: ShardRegion.ExtractShardId = {
+    case EntityEnvelope(id, _)       => (id % numberOfShards).toString
+    //case Get(id)                     => (id % numberOfShards).toString
+    case ShardRegion.StartEntity(id) =>
+      // StartEntity is used by remembering entities feature
+      (id.toLong % numberOfShards).toString
+  }
 }
 
-class CanNode(myId:BigInt) extends Actor with ActorLogging {
+class CanNode() extends Actor with ActorLogging {
   implicit val ec: ExecutionContext = context.dispatcher
 
   val nodeConf: Config = context.system.settings.config.getConfig("CANnetworkConstants")
@@ -31,6 +44,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
   var myCoord: Coordinate = null
   val myNeighbors = new mutable.HashMap[BigInt,Neighbor]()
   val myData = new mutable.HashMap[(Double,Double),Int]()
+  val myId=BigInt(self.path.name)
 
   def nbrsAsString(): String = {
     var str = ""
@@ -126,10 +140,11 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
 
   override def receive: Receive = {
 
-    case JoinCan(peer: ActorRef) => {
+    case JoinCan(shardRegionRef: ActorRef, existingNode:BigInt) => {
 //      println("Join called for node:"+ myId)
       log.info("Join called for node:"+ myId)
-      if (peer == self) {
+      if (existingNode == myId) {
+        println("Existing node myID:"+myId+" and existing Node:"+existingNode)
         myCoord = new Coordinate(0,0,xMax,yMax)
       }
       else {
@@ -137,7 +152,7 @@ class CanNode(myId:BigInt) extends Actor with ActorLogging {
         val p_y = scala.util.Random.nextDouble() * yMax
 //        println(p_x,p_y)
         implicit val timeout = Timeout(10 seconds)
-        val future= peer ? RouteNewNode(p_x, p_y, self)
+        val future= shardRegionRef ? EntityEnvelope(existingNode,RouteNewNode(p_x, p_y, self))
         val coords = Await.result(future,timeout.duration).asInstanceOf[RouteResponse]
         myCoord = new Coordinate(coords.lx,coords.ly,coords.ux,coords.uy)
 //        peer ! RouteNewNode(p_x, p_y, self)
