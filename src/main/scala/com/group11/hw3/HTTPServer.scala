@@ -47,7 +47,7 @@ class HTTPServer {
             //println("Received write request by HTTP server")
             //val node = Utils.selectRandomNode(chordSystem, chordNodes)
             val node=scala.util.Random.nextInt(chordNodes.size)
-            chordShardRegionRef ! EntityEnvelope(node , CWriteKeyValue(key,value))
+            chordShardRegionRef ! EntityEnvelope(node , CWriteKeyValue(BigInt(key),value.toInt))
 
             complete("Post method done")
           }

@@ -394,12 +394,12 @@ class ChordClassicNode() extends Actor with ActorLogging{
       }
     }
 
-    case CWriteKeyValue(key: String, value: String) => {
-      //println("Received write request by classic chord node actor for:" + key + "," + value)
-      log.info("Received write request by classic chord node actor for : " + key + "," + value)
-    }
+//    case CWriteKeyValue(key: String, value: String) => {
+//      //println("Received write request by classic chord node actor for:" + key + "," + value)
+//      log.info("Received write request by classic chord node actor for : " + key + "," + value)
+//    }
 
-    case CFindNodeToWriteData(key: BigInt, value: Int) => {
+    case CWriteKeyValue(key: BigInt, value: Int) => {
 
       //log.info("Received write request for:"+nodeHash)
       if (checkRange(leftInclude = false, nodeHash, fingerTable(0).nodeId, rightInclude = true, key)) {
@@ -408,7 +408,7 @@ class ChordClassicNode() extends Actor with ActorLogging{
       } else {
         val target = findClosestPredInFT(key)
         //println("!!!Forwarding to node"+target +"for key:"+key)
-        shardRegion ! EntityEnvelope(target , CFindNodeToWriteData(key, value))
+        shardRegion ! EntityEnvelope(target , CWriteKeyValue(key, value))
       }
     }
 

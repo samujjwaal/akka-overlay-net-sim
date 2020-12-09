@@ -88,7 +88,7 @@ object Main {
       val rnd = new Random
       val randomNum = 0 + rnd.nextInt((chordNodesId.size - 0) + 1)
       val randNode= chordNodesId(0)
-      chordShardRegion  ! EntityEnvelope(randNode,CFindNodeToWriteData(key.toInt, value.toInt))
+      chordShardRegion  ! EntityEnvelope(randNode,CWriteKeyValue(BigInt(key), value.toInt))
       //initialWriteCounter.addAndGet(1)
     })
 

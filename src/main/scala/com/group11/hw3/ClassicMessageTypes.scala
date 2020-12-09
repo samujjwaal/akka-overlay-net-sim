@@ -24,7 +24,7 @@ case class CFingerTableStatusResponse(ft: String)
 case class CUpdateFingerTable(nodeId:BigInt,i:Int,key:BigInt)
 
 case class CGetKeyValue(key: Int)
-case class CWriteKeyValue(key: String, value: String)
+case class CWriteKeyValue(key: BigInt, value: Int)
 case class CDataResponse(message:String)
 
 case class CJoinNetwork(shardRegion: ActorRef,peerID: BigInt)
@@ -49,7 +49,7 @@ case class CCallFindPredResponse(predId: BigInt, predRef: ActorRef)
 case class CGetNodeSnapshot()
 case class CGetNodeSnapshotResponse(snap:JsonObject)
 
-case class CFindNodeToWriteData(key: BigInt, value: Int)
+//case class CFindNodeToWriteData(key: BigInt, value: Int)
 case class CWriteDataToNode(key: BigInt, value: Int)
 case class CGetValueFromNode(key:Int)
 

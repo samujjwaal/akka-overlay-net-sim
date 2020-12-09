@@ -56,7 +56,7 @@ class UserMaster extends Actor with ActorLogging {
         else {
           val index = Utils.randomlySelectDataIndex(writeData2.size)
           val record = writeData2(index).split(',')
-          UserRouter ! CFindNodeToWriteData(BigInt(record(0)),record(1).toInt)
+          UserRouter ! CWriteKeyValue(BigInt(record(0)),record(1).toInt)
         }
         numRequest = numRequest + 1
       }
