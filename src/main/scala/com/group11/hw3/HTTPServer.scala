@@ -6,10 +6,8 @@ import akka.http.scaladsl.server.Directives.{complete, concat, get, parameters, 
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
-import com.group11.hw3.utils.Utils
 import com.typesafe.config.{Config, ConfigFactory}
 
-import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
@@ -20,7 +18,7 @@ class HTTPServer {
 
   var bindingFuture: Future[Http.ServerBinding] = _
 
-  def setupServer(chordSystem: ActorSystem, chordNodes: mutable.HashMap[BigInt,ActorRef]): Unit = {
+  def setupServer(chordSystem: ActorSystem, chordShardRegionRef:ActorRef,chordNodes: List[BigInt]): Unit = {
     implicit val chordSystem: ActorSystem = ActorSystem(netConf.getString("networkSystemName"))
     implicit val materializer: ActorMaterializer = ActorMaterializer()
     //Define and start http server
@@ -30,12 +28,13 @@ class HTTPServer {
           parameters("name".asInstanceOf[String]) { key =>
 
             println("Received read request by HTTP server")
-            val node = Utils.selectRandomNode(chordSystem, chordNodes)
+            //val node = Utils.selectRandomNode(chordSystem, chordNodes)
+            val node = scala.util.Random.nextInt(chordNodes.size)
             var msgReply = ""
 
             implicit val timeout: Timeout = Timeout(10.seconds)
-            println("--"+node.path.name)
-            val future = node ? CGetKeyValue(key.toInt)
+            println("--"+node)
+            val future = chordShardRegionRef ? EntityEnvelope(node,CGetKeyValue(key.toInt))
             val readValResp = Await.result(future, timeout.duration).asInstanceOf[CDataResponse]
             msgReply=readValResp.message
 
@@ -46,8 +45,9 @@ class HTTPServer {
           parameters("name".asInstanceOf[String],"val".asInstanceOf[String]) { (key,value) =>
 
             println("Received write request by HTTP server")
-            val node = Utils.selectRandomNode(chordSystem, chordNodes)
-            node ! CWriteKeyValue(key,value)
+            //val node = Utils.selectRandomNode(chordSystem, chordNodes)
+            val node=scala.util.Random.nextInt(chordNodes.size)
+            chordShardRegionRef ! EntityEnvelope(node , CWriteKeyValue(key,value))
 
             complete("Post method done")
           }

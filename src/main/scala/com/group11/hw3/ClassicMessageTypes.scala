@@ -10,7 +10,7 @@ case class CReadKey(key: String)
 case class CWriteValue(key: String, value: String)
 
 case class CGetNodeNeighbors(key: BigInt)
-case class CGetNodeNeighborsResponse(succId: BigInt,succRef: ActorRef, predId: BigInt, predRef: ActorRef)
+case class CGetNodeNeighborsResponse(succId: BigInt, predId: BigInt)
 
 case class CNodeAdaptedResponse()
 case class CGetNodeIndex()
@@ -21,13 +21,13 @@ case class CFindNode(node: ActorRef)
 case class CGetFingerTableStatus()
 case class CFingerTableStatusResponse(ft: String)
 
-case class CUpdateFingerTable(nodeRef:ActorRef,nodeId:BigInt,i:Int,key:BigInt)
+case class CUpdateFingerTable(nodeId:BigInt,i:Int,key:BigInt)
 
 case class CGetKeyValue(key: Int)
 case class CWriteKeyValue(key: String, value: String)
 case class CDataResponse(message:String)
 
-case class CJoinNetwork(networkRef: ActorRef)
+case class CJoinNetwork(shardRegion: ActorRef,peerID: BigInt)
 case class CJoinStatus(status: String)
 
 case class CFindKeyPredecessor(key: BigInt)
@@ -37,11 +37,11 @@ case class CFindKeySuccessor(key: BigInt)
 case class CFindKeySuccResponse(succId: BigInt,succRef: ActorRef, predId: BigInt, predRef: ActorRef)
 
 case class CGetNodePredecessor(key: BigInt)
-case class CSetNodePredecessor(nodeId: BigInt,nodeRef: ActorRef)
+case class CSetNodePredecessor(nodeId: BigInt)
 
-case class CSetNodeSuccessor(nodeId: BigInt,nodeRef: ActorRef)
+case class CSetNodeSuccessor(nodeId: BigInt)
 case class CGetNodeSuccessor()
-case class CGetNodeSuccResponse(nodeId: BigInt, nodeRef: ActorRef)
+case class CGetNodeSuccResponse(nodeId: BigInt)
 
 case class CCallFindPredecessor(ref: ActorRef,key: BigInt)
 case class CCallFindPredResponse(predId: BigInt, predRef: ActorRef)
@@ -64,5 +64,7 @@ case class CreateNodesReply(nodeHash:mutable.HashMap[BigInt, ActorRef])
 case class CUpdateFingerTables()
 case class CWriteInitialData()
 case class CCaptureGlobalSnapshot()
+
+final case class EntityEnvelope(id: BigInt, payload: Any)
 
 

@@ -2,6 +2,7 @@ package com.group11.hw3.chord
 
 import scala.concurrent.duration._
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.cluster.sharding.ShardRegion
 import akka.util.Timeout
 import akka.pattern.{ask, pipe}
 import com.group11.hw3._
@@ -14,20 +15,31 @@ import scala.util.control.Breaks._
 object ChordClassicNode {
 
   def props(nodeHash:BigInt):Props= {
-    Props(new ChordClassicNode(nodeHash:BigInt))
+    Props(new ChordClassicNode())
+  }
+  val numberOfShards=100
+  val extractEntityId: ShardRegion.ExtractEntityId = {
+    case EntityEnvelope(id, payload) => (id.toString, payload)
+  }
+
+
+  val extractShardId: ShardRegion.ExtractShardId = {
+    case EntityEnvelope(id, _)       => (id % numberOfShards).toString
+    case ShardRegion.StartEntity(id) =>
+      // StartEntity is used by remembering entities feature
+      (id.toLong % numberOfShards).toString
   }
 
 }
 
-class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
+class ChordClassicNode() extends Actor with ActorLogging{
 //  implicit val timeout: Timeout = Timeout(10.seconds)
   implicit val ec: ExecutionContext = context.dispatcher
+  val nodeHash : BigInt= BigInt(self.path.name)
   val nodeConf: Config = context.system.settings.config
   val ringSize: BigInt = BigInt(2).pow(nodeConf.getInt("networkConstants.M"))
 
-  var poc: ActorRef = _
-  var successor:ActorRef= self
-  var predecessor:ActorRef=self
+  var poc: BigInt = _
 
   var predecessorId: BigInt = nodeHash
   var successorId: BigInt = nodeHash
@@ -36,9 +48,11 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
   val numFingers: Int = nodeConf.getInt("networkConstants.M")
   var fingerTable = new Array[ClassicFinger](numFingers)
 
+  var shardRegion: ActorRef= null
+
   fingerTable.indices.foreach(i =>{
     val start:BigInt = (nodeHash + BigInt(2).pow(i)) % ringSize
-    fingerTable(i) = ClassicFinger(start, self, nodeHash)
+    fingerTable(i) = ClassicFinger(start, nodeHash)
   } )
 
   /**
@@ -82,7 +96,7 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
     for (i <- 0 until M ) {
       val p = (nodeHash - BigInt(2).pow(i) + BigInt(2).pow(M) + 1) % BigInt(2).pow(M)
 //      var (pred,predID)=findKeyPredecessor(p)
-      successor ! CUpdateFingerTable(self,nodeHash,i,p)
+      shardRegion ! EntityEnvelope(successorId , CUpdateFingerTable(nodeHash,i,p))
     }
   }
 
@@ -105,8 +119,8 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
    * @return resPredRef : Ref of the predecessor found.
    *         resPredId  : Hash ID of predecessor found.
    */
-  def findClosestPredInFT(key:BigInt):(ActorRef,BigInt) = {
-    var resPredRef: ActorRef = self
+  def findClosestPredInFT(key:BigInt):BigInt = {
+    //var resPredRef: ActorRef = self
     var resPredId: BigInt = nodeHash
 
     // Assuming the key is not equal to my hash
@@ -121,7 +135,7 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
         val nextFingerNode = fingerTable(i + 1).nodeId
         // If key is between current finger node and next finger node, then return current finger node
         if (checkRange(false, curFingernode, nextFingerNode, true, key)) {
-          resPredRef = fingerTable(i).nodeRef
+          //resPredRef = fingerTable(i).nodeRef
           resPredId = fingerTable(i).nodeId
           found = true
           break
@@ -132,11 +146,11 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
     // If key is beyond the last finger node, return the last finger node.
     if (!found) {
       resPredId = fingerTable(numFingers-1).nodeId
-      resPredRef = fingerTable(numFingers-1).nodeRef
+      //resPredRef = fingerTable(numFingers-1).nodeRef
     }
 
     // If no closest node found in the finger table, return self
-    (resPredRef,resPredId)
+    resPredId
   }
 
 //  /**
@@ -178,75 +192,83 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
   log.info("Classic actor created")
   override def receive: Receive = {
 
-    case CJoinNetwork(networkRef) => {
+    case CJoinNetwork(chordShardRegion,peerID) => {
       // We assume network has at least one node and so, networkRef is not null
 
       println("Join network called for node "+nodeHash.toString)
+      this.shardRegion=chordShardRegion
+      if(peerID != nodeHash) {
 
-      this.poc = networkRef
-      implicit val timeout: Timeout = Timeout(5.seconds)
-      val future = poc ? CGetNodeNeighbors(nodeHash)
-      val nodeNbrResp = Await.result(future, timeout.duration).asInstanceOf[CGetNodeNeighborsResponse]
+        this.poc = peerID
+        implicit val timeout: Timeout = Timeout(5.seconds)
+        val future = shardRegion ? EntityEnvelope(poc , CGetNodeNeighbors(nodeHash))
+        val nodeNbrResp = Await.result(future, timeout.duration).asInstanceOf[CGetNodeNeighborsResponse]
 
-      println("--- Finding succ --- Node :" + nodeHash.toString + " succ : " + nodeNbrResp.succId.toString)
-      fingerTable(0).nodeRef = nodeNbrResp.succRef
-      fingerTable(0).nodeId = nodeNbrResp.succId
-      successor = nodeNbrResp.succRef
-      successorId = nodeNbrResp.succId
-      predecessor = nodeNbrResp.predRef
-      predecessorId = nodeNbrResp.predId
-      successor ! CSetNodePredecessor(nodeHash, self)
-      predecessor ! CSetNodeSuccessor(nodeHash, self)
-      for (i <- 1 until numFingers) {
+        println("--- Finding succ --- Node :" + nodeHash.toString + " succ : " + nodeNbrResp.succId.toString)
+        //fingerTable(0).nodeRef = nodeNbrResp.succRef
+        fingerTable(0).nodeId = nodeNbrResp.succId
+        //successor = nodeNbrResp.succRef
+        successorId = nodeNbrResp.succId
+        //predecessor = nodeNbrResp.predRef
+        predecessorId = nodeNbrResp.predId
 
-        println("updating finger "+i+" for node "+nodeHash.toString)
-        val lastSucc = fingerTable(i - 1).nodeId
-        val curStart = fingerTable(i).start
+//        successor ! CSetNodePredecessor(nodeHash, self)
+//        predecessor ! CSetNodeSuccessor(nodeHash, self)
 
-        if (checkRange(false, nodeHash, lastSucc, true, curStart)) {
-          println("finger carry over.")
-          fingerTable(i).nodeId = fingerTable(i - 1).nodeId
-          fingerTable(i).nodeRef = fingerTable(i - 1).nodeRef
+        shardRegion ! EntityEnvelope(successorId, CSetNodePredecessor(nodeHash))
+        shardRegion ! EntityEnvelope(predecessorId, CSetNodeSuccessor(nodeHash))
+
+        for (i <- 1 until numFingers) {
+
+          println("updating finger " + i + " for node " + nodeHash.toString)
+          val lastSucc = fingerTable(i - 1).nodeId
+          val curStart = fingerTable(i).start
+
+          if (checkRange(false, nodeHash, lastSucc, true, curStart)) {
+            println("finger carry over.")
+            fingerTable(i).nodeId = fingerTable(i - 1).nodeId
+            //fingerTable(i).nodeRef = fingerTable(i - 1).nodeRef
+          }
+          else {
+            println("finding new successor for finger. ")
+            implicit val timeout: Timeout = Timeout(5.seconds)
+            val future = shardRegion ? EntityEnvelope(poc , CGetNodeNeighbors(curStart))
+            val nodeNbrResp = Await.result(future, timeout.duration).asInstanceOf[CGetNodeNeighborsResponse]
+            //fingerTable(i).nodeRef = nodeNbrResp.succRef
+            fingerTable(i).nodeId = nodeNbrResp.succId
+
+          }
         }
-        else {
-          println("finding new successor for finger. ")
-          implicit val timeout: Timeout = Timeout(5.seconds)
-          val future = poc ? CGetNodeNeighbors(curStart)
-          val nodeNbrResp = Await.result(future, timeout.duration).asInstanceOf[CGetNodeNeighborsResponse]
-          fingerTable(i).nodeRef = nodeNbrResp.succRef
-          fingerTable(i).nodeId = nodeNbrResp.succId
-
-        }
+        println(getFingerTableStatus())
+        updateFingerTablesOfOthers()
       }
-      println(getFingerTableStatus())
-      updateFingerTablesOfOthers()
       log.info("{} added to chord network", nodeHash)
       sender() ! CJoinStatus("Complete!")
     }
 
     case CGetNodeNeighbors(key) => {
-      var nodesuccRef: ActorRef = null
+      //var nodesuccRef: ActorRef = null
       var nodesuccId: BigInt = null
-      var nodepredRef: ActorRef = null
+      //var nodepredRef: ActorRef = null
       var nodepredId: BigInt = null
       if (checkRange(false, nodeHash, successorId, true, key)) {
-        nodesuccRef = successor
+        //nodesuccRef = successor
         nodesuccId = successorId
-        nodepredRef = self
+        //nodepredRef = self
         nodepredId = nodeHash
-        sender ! CGetNodeNeighborsResponse(nodesuccId,nodesuccRef,nodepredId,nodepredRef)
+        sender ! CGetNodeNeighborsResponse(nodesuccId,nodepredId)
       }
       else if (checkRange(false, predecessorId, nodeHash, true, key)) {
-        nodesuccRef = self
+        //nodesuccRef = self
         nodesuccId = nodeHash
-        nodepredRef = predecessor
+        //nodepredRef = predecessor
         nodepredId = predecessorId
-        sender ! CGetNodeNeighborsResponse(nodesuccId,nodesuccRef,nodepredId,nodepredRef)
+        sender ! CGetNodeNeighborsResponse(nodesuccId,nodepredId)
       }
       else {
-        val (next_pocRef, next_pocId) = findClosestPredInFT(key)
+        val next_pocId = findClosestPredInFT(key)
         implicit val timeout: Timeout = Timeout(5.seconds)
-        (next_pocRef ? CGetNodeNeighbors(key)).pipeTo(sender())
+        (shardRegion ? EntityEnvelope(next_pocId , CGetNodeNeighbors(key))).pipeTo(sender())
 //        val future = next_pocRef ? CGetNodeNeighbors(key)
 //        val nodeNbrResp = Await.result(future, timeout.duration).asInstanceOf[CGetNodeNeighborsResponse]
 //        nodesuccRef = nodeNbrResp.succRef
@@ -301,32 +323,32 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
 //    }
 
     case CGetNodeSuccessor() => {
-      sender ! CGetNodeSuccResponse(successorId, successor)
+      sender ! CGetNodeSuccResponse(successorId)
     }
 
-    case CSetNodeSuccessor(id,ref) => {
-      successor = ref
+    case CSetNodeSuccessor(id) => {
+      //successor = ref
       successorId = id
-      fingerTable(0).nodeRef = ref
+      //fingerTable(0).nodeRef = ref
       fingerTable(0).nodeId = id
     }
 
-    case CSetNodePredecessor(id,ref) => {
-      predecessor = ref
+    case CSetNodePredecessor(id) => {
+      //predecessor = ref
       predecessorId = id
     }
 
-    case CUpdateFingerTable(ref,id,i,pos) => {
-      if (ref != self) {
+    case CUpdateFingerTable(id,i,pos) => {
+      if (id != nodeHash) {
         if (checkRange(leftInclude = false, nodeHash, fingerTable(0).nodeId, rightInclude = true, pos)) {
           if (checkRange(leftInclude = false, nodeHash, fingerTable(i).nodeId, rightInclude = false, id)) {
-            fingerTable(i).nodeRef = ref
+            //fingerTable(i).nodeRef = ref
             fingerTable(i).nodeId = id
-            predecessor ! CUpdateFingerTable(ref, id,i,nodeHash)
+            shardRegion ! EntityEnvelope(predecessorId , CUpdateFingerTable( id,i,nodeHash))
           }
         } else {
-          val (nextPredRef,nextPredId) = findClosestPredInFT(pos)
-          nextPredRef ! CUpdateFingerTable(ref, id,i,pos)
+          val nextPredId = findClosestPredInFT(pos)
+          shardRegion ! EntityEnvelope(nextPredId , CUpdateFingerTable( id,i,pos))
         }
       }
     }
@@ -336,7 +358,7 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
     }
 
     case CGetKeyValue(key: Int) => {
-      println("Dummy value for " + key)
+      //println("Dummy value for " + key)
 
       if (checkRange(leftInclude = false, predecessorId, nodeHash, rightInclude = true, key)) {
         if (nodeData.contains(key)) {
@@ -348,14 +370,14 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
       else {
         if (checkRange(leftInclude = false, nodeHash, fingerTable(0).nodeId, rightInclude = true, key)) {
           implicit val timeout: Timeout = Timeout(10.seconds)
-          (fingerTable(0).nodeRef ? CGetValueFromNode(key)).pipeTo(sender())
+          (shardRegion ? EntityEnvelope(fingerTable(0).nodeId , CGetValueFromNode(key))).pipeTo(sender())
 //          val future = fingerTable(0).nodeRef ? CGetValueFromNode(key)
 //          val keyValue = Await.result(future, timeout.duration).asInstanceOf[CDataResponse]
 //          sender ! CDataResponse(keyValue.message)
         } else {
           implicit val timeout: Timeout = Timeout(10.seconds)
-          val (target, dummy) = findClosestPredInFT(key)
-          (target ? CGetKeyValue(key)).pipeTo(sender())
+          val target = findClosestPredInFT(key)
+          (shardRegion ? EntityEnvelope(target , CGetKeyValue(key))).pipeTo(sender())
 //          val future = target ? CGetKeyValue(key)
 //          val keyValue = Await.result(future, timeout.duration).asInstanceOf[CDataResponse]
 //          sender ! CDataResponse(keyValue.message)
@@ -381,11 +403,11 @@ class ChordClassicNode(nodeHash:BigInt) extends Actor with ActorLogging{
 
       if (checkRange(leftInclude = false, nodeHash, fingerTable(0).nodeId, rightInclude = true, key)) {
         println("!!!Found node"+nodeHash +"for key:"+key)
-        fingerTable(0).nodeRef ! CWriteDataToNode(key, value)
+        shardRegion ! EntityEnvelope(fingerTable(0).nodeId , CWriteDataToNode(key, value))
       } else {
-        val (target, dummy) = findClosestPredInFT(key)
-        println("!!!Forwarding to node"+target.path.name +"for key:"+key)
-        target ! CFindNodeToWriteData(key, value)
+        val target = findClosestPredInFT(key)
+        println("!!!Forwarding to node"+target +"for key:"+key)
+        shardRegion ! EntityEnvelope(target , CFindNodeToWriteData(key, value))
       }
     }
 
