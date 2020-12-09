@@ -3,8 +3,8 @@ package com.group11.hw3
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives.{complete, concat, get, parameters, path, post}
+import akka.http.scaladsl.server.Route
 import akka.pattern.ask
-import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 
@@ -18,9 +18,12 @@ class HTTPServer {
 
   var bindingFuture: Future[Http.ServerBinding] = _
 
-  def setupServer(chordSystem: ActorSystem, chordShardRegionRef:ActorRef,chordNodes: List[BigInt]): Unit = {
-    implicit val chordSystem: ActorSystem = ActorSystem(netConf.getString("networkSystemName"))
-    implicit val materializer: ActorMaterializer = ActorMaterializer()
+  def setupServer(chordSystem: ActorSystem, chordShardRegionRef:ActorRef,chordNodes: List[BigInt]): Route = {
+
+    //implicit val chordSystem: ActorSystem = ActorSystem(netConf.getString("networkSystemName"))
+    //implicit val materializer: ActorMaterializer = ActorMaterializer()
+
+
     //Define and start http server
     val route = path("chordRoot") {
       concat(
@@ -44,7 +47,7 @@ class HTTPServer {
         post {
           parameters("name".asInstanceOf[String],"val".asInstanceOf[String]) { (key,value) =>
 
-            //println("Received write request by HTTP server")
+            //println("Received write request by HTTP server, key:"+key)
             //val node = Utils.selectRandomNode(chordSystem, chordNodes)
             val node=scala.util.Random.nextInt(chordNodes.size)
             chordShardRegionRef ! EntityEnvelope(node , CWriteKeyValue(BigInt(key),value.toInt))
@@ -55,7 +58,9 @@ class HTTPServer {
         }
       )
     }
-    val bindingFuture = Http().newServerAt("localhost", 9000).bind(route)
+    route
+
+    //val bindingFuture = Http().newServerAt("localhost", 9000).bind(route)
   }
 
 }

@@ -359,9 +359,10 @@ class ChordClassicNode() extends Actor with ActorLogging{
 
     case CGetKeyValue(key: Int) => {
       //println("Dummy value for " + key)
-      log.info("Received read request for : "+nodeHash)
+      log.info("Received read request for : "+key)
       if (checkRange(leftInclude = false, predecessorId, nodeHash, rightInclude = true, key)) {
         if (nodeData.contains(key)) {
+          log.info("Key:"+key+", value:"+nodeData(key).toString)
           sender ! CDataResponse(nodeData(key).toString)
         } else {
           sender ! CDataResponse("Key not found!")

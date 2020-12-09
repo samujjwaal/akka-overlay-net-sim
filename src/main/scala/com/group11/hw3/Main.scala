@@ -2,10 +2,12 @@ package com.group11.hw3
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings}
+import akka.http.scaladsl.Http
 import akka.pattern.ask
 import akka.util.Timeout
 import com.group11.hw3.chord.ChordClassicNode
 import com.typesafe.config.{Config, ConfigFactory}
+import scalaj.http.{ HttpOptions, HttpRequest}
 
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.concurrent.Await
@@ -23,7 +25,7 @@ object Main {
     val numNodes: Int = conf.getInt("networkConstants.numNodes")
     val netConf = conf.getConfig("networkConstants")
     val userConf = conf.getConfig("userConstants")
-    val chordSystem = ActorSystem(netConf.getString("networkSystemName"))
+    implicit val chordSystem = ActorSystem(netConf.getString("networkSystemName"))
 
     val chordNodesId = new ListBuffer[BigInt]()
 
@@ -93,10 +95,17 @@ object Main {
     })
 
     Thread.sleep(2000)
-//    val server = new HTTPServer()
-//    server.setupServer(chordSystem,chordShardRegion,chordNodesId.toList)
-//
-//    Thread.sleep(100)
+    val server = new HTTPServer()
+    val r=server.setupServer(chordSystem,chordShardRegion,chordNodesId.toList)
+    Http().bindAndHandle(r, "localhost")
+
+    Thread.sleep(100)
+
+    val request: HttpRequest = scalaj.http.Http("http://localhost:9000/chordRoot")
+
+    val writeResponse = request.params(("name", "23"), ("val", "8907")).method("POST").option(HttpOptions.connTimeout(10000)).asString
+    val readResponse = request.param("name","1").option(HttpOptions.connTimeout(10000)).asString
+
 
 //    val userSystem = ActorSystem(userConf.getString("userSystemName"))
 //    val userMaster = userSystem.actorOf(UserMaster.props(),"user-master")
