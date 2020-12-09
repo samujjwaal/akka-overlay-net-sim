@@ -21,3 +21,5 @@ libraryDependencies ++= Seq(
   "org.scalactic" %% "scalactic" % "3.2.2",
   "com.typesafe" % "config" % "1.4.0"
 )
+
+mainClass in(Compile, run) := Some("com.group11.hw3.ChordMain")
