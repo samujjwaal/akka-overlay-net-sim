@@ -27,13 +27,13 @@ class HTTPServer {
         get {
           parameters("name".asInstanceOf[String]) { key =>
 
-            println("Received read request by HTTP server")
+            //println("Received read request by HTTP server")
             //val node = Utils.selectRandomNode(chordSystem, chordNodes)
             val node = scala.util.Random.nextInt(chordNodes.size)
             var msgReply = ""
 
             implicit val timeout: Timeout = Timeout(10.seconds)
-            println("--"+node)
+            //println("--"+node)
             val future = chordShardRegionRef ? EntityEnvelope(node,CGetKeyValue(key.toInt))
             val readValResp = Await.result(future, timeout.duration).asInstanceOf[CDataResponse]
             msgReply=readValResp.message
@@ -44,7 +44,7 @@ class HTTPServer {
         post {
           parameters("name".asInstanceOf[String],"val".asInstanceOf[String]) { (key,value) =>
 
-            println("Received write request by HTTP server")
+            //println("Received write request by HTTP server")
             //val node = Utils.selectRandomNode(chordSystem, chordNodes)
             val node=scala.util.Random.nextInt(chordNodes.size)
             chordShardRegionRef ! EntityEnvelope(node , CWriteKeyValue(key,value))

@@ -34,7 +34,7 @@ object Main {
 
 
     val chordShardRegion: ActorRef = ClusterSharding(chordSystem).start(
-      typeName = "CanNodeRegion",
+      typeName = "ChordNodeRegion",
       entityProps = Props[ChordClassicNode](),
       settings = ClusterShardingSettings(chordSystem),
       extractEntityId = ChordClassicNode.extractEntityId,
@@ -43,7 +43,10 @@ object Main {
 
     var hashID = BigInt(0)
     val peer=hashID
-    chordShardRegion ! EntityEnvelope(hashID, CJoinNetwork(chordShardRegion,peer))
+    //chordShardRegion ? EntityEnvelope(hashID, CJoinNetwork(chordShardRegion,peer))
+    implicit val timeout = Timeout(15 seconds)
+    val future = chordShardRegion ? EntityEnvelope(hashID , CJoinNetwork(chordShardRegion,peer))
+    val joinStatus = Await.result(future,timeout.duration).asInstanceOf[CJoinStatus]
     //val poc = context.actorOf(ChordClassicNode.props(hashID), hashID.toString())
     chordNodesId += hashID
     //chordNodesRef.addOne(hashID,poc)
@@ -63,15 +66,15 @@ object Main {
       }
     }
 
-    println("All nodes created...")
-    Thread.sleep(1000)
-    println("Printing all finger tables -----")
-    for (i <- chordNodesId) {
-      implicit val timeout = Timeout(15 seconds)
-      val future = chordShardRegion  ? EntityEnvelope(i,CGetFingerTableStatus())
-      val fingerStatus = Await.result(future, timeout.duration).asInstanceOf[CFingerTableStatusResponse]
-      println("Node : "+i.toString+" FT : "+fingerStatus.ft)
-    }
+//    println("All nodes created...")
+//    Thread.sleep(1000)
+//    println("Printing all finger tables -----")
+//    for (i <- chordNodesId) {
+//      implicit val timeout = Timeout(15 seconds)
+//      val future = chordShardRegion  ? EntityEnvelope(i,CGetFingerTableStatus())
+//      val fingerStatus = Await.result(future, timeout.duration).asInstanceOf[CFingerTableStatusResponse]
+//      println("Node : "+i.toString+" FT : "+fingerStatus.ft)
+//    }
 
     //Writing initial data to nodes
     val dataList = new ArrayBuffer[Array[String]]()

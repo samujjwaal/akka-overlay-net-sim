@@ -195,7 +195,7 @@ class ChordClassicNode() extends Actor with ActorLogging{
     case CJoinNetwork(chordShardRegion,peerID) => {
       // We assume network has at least one node and so, networkRef is not null
 
-      println("Join network called for node "+nodeHash.toString)
+      log.info("Join network called for node "+nodeHash.toString)
       this.shardRegion=chordShardRegion
       if(peerID != nodeHash) {
 
@@ -204,7 +204,7 @@ class ChordClassicNode() extends Actor with ActorLogging{
         val future = shardRegion ? EntityEnvelope(poc , CGetNodeNeighbors(nodeHash))
         val nodeNbrResp = Await.result(future, timeout.duration).asInstanceOf[CGetNodeNeighborsResponse]
 
-        println("--- Finding succ --- Node :" + nodeHash.toString + " succ : " + nodeNbrResp.succId.toString)
+        //println("--- Finding succ --- Node :" + nodeHash.toString + " succ : " + nodeNbrResp.succId.toString)
         //fingerTable(0).nodeRef = nodeNbrResp.succRef
         fingerTable(0).nodeId = nodeNbrResp.succId
         //successor = nodeNbrResp.succRef
@@ -220,17 +220,17 @@ class ChordClassicNode() extends Actor with ActorLogging{
 
         for (i <- 1 until numFingers) {
 
-          println("updating finger " + i + " for node " + nodeHash.toString)
+          //println("updating finger " + i + " for node " + nodeHash.toString)
           val lastSucc = fingerTable(i - 1).nodeId
           val curStart = fingerTable(i).start
 
           if (checkRange(false, nodeHash, lastSucc, true, curStart)) {
-            println("finger carry over.")
+            //println("finger carry over.")
             fingerTable(i).nodeId = fingerTable(i - 1).nodeId
             //fingerTable(i).nodeRef = fingerTable(i - 1).nodeRef
           }
           else {
-            println("finding new successor for finger. ")
+            //println("finding new successor for finger. ")
             implicit val timeout: Timeout = Timeout(5.seconds)
             val future = shardRegion ? EntityEnvelope(poc , CGetNodeNeighbors(curStart))
             val nodeNbrResp = Await.result(future, timeout.duration).asInstanceOf[CGetNodeNeighborsResponse]
@@ -239,7 +239,7 @@ class ChordClassicNode() extends Actor with ActorLogging{
 
           }
         }
-        println(getFingerTableStatus())
+        //println(getFingerTableStatus())
         updateFingerTablesOfOthers()
       }
       log.info("{} added to chord network", nodeHash)
@@ -359,7 +359,7 @@ class ChordClassicNode() extends Actor with ActorLogging{
 
     case CGetKeyValue(key: Int) => {
       //println("Dummy value for " + key)
-
+      log.info("Received read request for : "+nodeHash)
       if (checkRange(leftInclude = false, predecessorId, nodeHash, rightInclude = true, key)) {
         if (nodeData.contains(key)) {
           sender ! CDataResponse(nodeData(key).toString)
@@ -395,18 +395,19 @@ class ChordClassicNode() extends Actor with ActorLogging{
     }
 
     case CWriteKeyValue(key: String, value: String) => {
-      println("Received write request by classic chord node actor for:" + key + "," + value)
-      log.info("Received write request by classic chord node actor for:" + key + "," + value)
+      //println("Received write request by classic chord node actor for:" + key + "," + value)
+      log.info("Received write request by classic chord node actor for : " + key + "," + value)
     }
 
     case CFindNodeToWriteData(key: BigInt, value: Int) => {
 
+      //log.info("Received write request for:"+nodeHash)
       if (checkRange(leftInclude = false, nodeHash, fingerTable(0).nodeId, rightInclude = true, key)) {
-        println("!!!Found node"+nodeHash +"for key:"+key)
+        //println("!!!Found node"+nodeHash +"for key:"+key)
         shardRegion ! EntityEnvelope(fingerTable(0).nodeId , CWriteDataToNode(key, value))
       } else {
         val target = findClosestPredInFT(key)
-        println("!!!Forwarding to node"+target +"for key:"+key)
+        //println("!!!Forwarding to node"+target +"for key:"+key)
         shardRegion ! EntityEnvelope(target , CFindNodeToWriteData(key, value))
       }
     }
