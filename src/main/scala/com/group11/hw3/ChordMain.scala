@@ -17,13 +17,12 @@ import scala.language.postfixOps
 /**
  * Class used to test the basic working of the akka http server.
  */
-object Main {
+object ChordMain {
   def main(args: Array[String]): Unit = {
 
     val conf: Config = ConfigFactory.load("application.conf")
     val numNodes: Int = conf.getInt("networkConstants.numNodes")
     val netConf = conf.getConfig("networkConstants")
-    val userConf = conf.getConfig("userConstants")
 
     /*
      Create Chord System
@@ -87,13 +86,16 @@ object Main {
      Create simulation data
      */
     val data = new ListBuffer[(BigInt,Int)]()
+    val dataKeys = new ListBuffer[BigInt]()
     val maxKey = netConf.getInt("maxKey")
     val totalRecords = netConf.getInt("totalRecords")
     while (data.size < totalRecords) {
       val key = scala.util.Random.nextInt(maxKey)
       val value = scala.util.Random.nextInt(1000)
-      if (!data.contains(key)) {
+      if (!dataKeys.contains(key)) {
         data.addOne((key, value))
+        dataKeys.addOne(key)
+        println("key : "+key+" val : "+value)
       }
     }
 
@@ -103,10 +105,10 @@ object Main {
      Write Initial data to Chord
      */
     val recordsToWrite = netConf.getInt("recordsToWrite")
-    var indexWrittenToChord = -1
-    for (i <- 0 until recordsToWrite) {
-      val writeResponse = request.params(("name", data(i)._1.toString), ("val", data(i)._2.toString)).method("POST").option(HttpOptions.connTimeout(10000)).asString
-      indexWrittenToChord = i
+    var lastIndexWritten = -1
+    while (lastIndexWritten < recordsToWrite-1) {
+      val writeResponse = request.params(("name", data(lastIndexWritten+1)._1.toString), ("val", data(lastIndexWritten+1)._2.toString)).method("POST").option(HttpOptions.connTimeout(10000)).asString
+      lastIndexWritten += 1
     }
 
     Thread.sleep(100)
@@ -115,16 +117,18 @@ object Main {
      Start user request simulation.
      */
     val totalRequests = netConf.getInt("totalRequests")
-
-    for (j <- 0 until totalRequests) {
+    var numReq = 0
+    while (numReq < totalRequests) {
       val requestType = scala.util.Random.nextInt(2)
       if (requestType == 0) {
-        val recordToRead = scala.util.Random.nextInt(indexWrittenToChord+1)
+        val recordToRead = scala.util.Random.nextInt(lastIndexWritten+1)
         val readResponse = request.param("name",data(recordToRead)._1.toString).option(HttpOptions.connTimeout(10000)).asString
+        numReq += 1
       }
-      else if (indexWrittenToChord < totalRecords-1){
-        val writeResponse = request.params(("name", data(indexWrittenToChord+1)._1.toString), ("val", data(indexWrittenToChord+1)._2.toString)).method("POST").option(HttpOptions.connTimeout(10000)).asString
-        indexWrittenToChord +=1
+      else if (lastIndexWritten < totalRecords-1){
+        val writeResponse = request.params(("name", data(lastIndexWritten+1)._1.toString), ("val", data(lastIndexWritten+1)._2.toString)).method("POST").option(HttpOptions.connTimeout(10000)).asString
+        lastIndexWritten += 1
+        numReq += 1
         Thread.sleep(100)
       }
     }
