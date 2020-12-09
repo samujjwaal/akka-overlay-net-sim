@@ -51,12 +51,12 @@ class UserMaster extends Actor with ActorLogging {
         if (Utils.randomlySelectRequestType()) {
 
           val index = Utils.randomlySelectDataIndex(readData2.size)
-          UserRouter ! CReadKey(readData2(index).split(',')(0))
+          UserRouter ! CUserReadReq(readData2(index).split(',')(0))
         }
         else {
           val index = Utils.randomlySelectDataIndex(writeData2.size)
           val record = writeData2(index).split(',')
-          UserRouter ! CWriteKeyValue(BigInt(record(0)),record(1).toInt)
+          UserRouter ! CUserWriteReq(record(0),record(1))
         }
         numRequest = numRequest + 1
       }

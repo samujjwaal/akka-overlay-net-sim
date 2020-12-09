@@ -34,8 +34,8 @@ class HTTPServer {
 
             implicit val timeout: Timeout = Timeout(10.seconds)
             //println("--"+node)
-            val future = chordShardRegionRef ? EntityEnvelope(node,CGetKeyValue(key.toInt))
-            val readValResp = Await.result(future, timeout.duration).asInstanceOf[CDataResponse]
+            val future = chordShardRegionRef ? EntityEnvelope(node,CReadKeyValue(key.toInt))
+            val readValResp = Await.result(future, timeout.duration).asInstanceOf[CReadResponse]
             msgReply=readValResp.message
 
             complete("Read/Get response:"+msgReply)
