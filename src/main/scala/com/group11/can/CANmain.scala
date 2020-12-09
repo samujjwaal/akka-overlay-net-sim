@@ -4,9 +4,10 @@ import akka.pattern.ask
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings}
 import akka.util.Timeout
-import com.group11.can.CanMessageTypes.{EntityEnvelope, JoinCan, JoinDone}
+import com.group11.can.CanMessageTypes._
 import com.typesafe.config.{Config, ConfigFactory}
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.Await
 import scala.language.postfixOps
@@ -17,29 +18,33 @@ object CANmain {
     val netConf = conf.getConfig("CANnetworkConstants")
 
     val numNodes = netConf.getInt(("numNodes"))
-    val canSystem = ActorSystem("CanSystem")
+//    val canSystem = ActorSystem("CanSystem")
+    val canSystem = ActorSystem(netConf.getString("CANSystemName"))
 
     val canShardRegion: ActorRef = ClusterSharding(canSystem).start(
       typeName = "CanNodeRegion",
       entityProps = Props[CanNode](),
       settings = ClusterShardingSettings(canSystem),
       extractEntityId = CanNode.extractEntityId,
-      extractShardId = CanNode.extractShardId)
-    val id=0
+      extractShardId = CanNode.extractShardId
+    )
+    var id = BigInt(0)
+    var peer = id
+
+    val bootstrap = new ListBuffer[BigInt]()
+
 
     implicit val timeout = Timeout(10 seconds)
-    val future= canShardRegion ? EntityEnvelope(id,JoinCan(canShardRegion,id))
+    val future= canShardRegion ? EntityEnvelope(id,JoinCan(canShardRegion,peer))
     val joinStatus = Await.result(future,timeout.duration).asInstanceOf[JoinDone]
+    bootstrap.addOne(id)
 
 
     //    val canNodesRef = new mutable.HashMap[BigInt,ActorRef]()
 //
-//    val canSystem = ActorSystem(netConf.getString("CANSystemName"))
 //    val numNodes = netConf.getInt(("numNodes"))
-//    val bootstrap = new mutable.HashMap[BigInt,ActorRef]()
 //    var id = BigInt(0)
 //    val newNode = canSystem.actorOf(CanNode.props(id),id.toString)
-//    bootstrap.addOne(id,newNode)
 //
 //    implicit val timeout = Timeout(10 seconds)
 //    val future= newNode ? JoinCan(bootstrap(0))
@@ -47,27 +52,30 @@ object CANmain {
 //
 //
 //
-//    Thread.sleep(10)
+    Thread.sleep(10)
 //    canNodesRef.addOne(id,newNode)
-//    while (id < numNodes-1) {
-//      id += 1
+    while (id < numNodes-1) {
+      id += 1
 //      val newNode = canSystem.actorOf(CanNode.props(id),id.toString)
-//      val peer = bootstrap(scala.util.Random.nextInt(bootstrap.size))
-//      bootstrap.addOne(id,newNode)
-//      implicit val timeout = Timeout(20 seconds)
-//      val future =newNode ? JoinCan(peer)
-//      val joinStatus = Await.result(future,timeout.duration).asInstanceOf[JoinDone]
-//      canNodesRef.addOne(id,newNode)
-//      //newNode ! JoinCan(peer)
-//      Thread.sleep(100)
-//    }
+      peer = bootstrap(scala.util.Random.nextInt(bootstrap.size))
+      implicit val timeout = Timeout(20 seconds)
+      val future = canShardRegion ? EntityEnvelope(id,JoinCan(canShardRegion,peer))
+      val joinStatus = Await.result(future,timeout.duration).asInstanceOf[JoinDone]
+      bootstrap.addOne(id)
+
+
+      //      canNodesRef.addOne(id,newNode)
+      //newNode ! JoinCan(peer)
+      Thread.sleep(100)
+    }
 //
-//    Thread.sleep(2000)
-//    for(node <- canNodesRef)
-//    {
+    Thread.sleep(2000)
+    for(node <- bootstrap)
+    {
+      canShardRegion ? EntityEnvelope(node,PrintNeighbors)
 //      node._2! PrintNeighbors
-//      Thread.sleep(10)
-//    }
+      Thread.sleep(10)
+    }
 //
 //    val data = new ListBuffer[((Double,Double),Int)]()
 //    val xMax = netConf.getDouble("xMax")

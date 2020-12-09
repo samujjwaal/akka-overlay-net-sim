@@ -45,7 +45,7 @@ class CanNode() extends Actor with ActorLogging {
   val myNeighbors = new mutable.HashMap[BigInt,Neighbor]()
   val myData = new mutable.HashMap[(Double,Double),Int]()
   val myId=BigInt(self.path.name)
-
+  var shardRegion: ActorRef = null
   def nbrsAsString(): String = {
     var str = ""
     for (n <- myNeighbors) {
@@ -54,7 +54,7 @@ class CanNode() extends Actor with ActorLogging {
     str
   }
 
-  def splitMyZone(newNode: ActorRef) = {
+  def splitMyZone(newNode: BigInt) = {
 
     var incomingUpperX=Double.MinValue
     var incomingLowerX=Double.MinValue
@@ -62,7 +62,7 @@ class CanNode() extends Actor with ActorLogging {
     var incomingLowerY=Double.MinValue
     if(myCoord.canSplitVertically)
     {
-      log.info("Splitting vertically for "+BigInt(newNode.path.name.toInt))
+      log.info("Splitting vertically for "+newNode)
       val oldUpperX=myCoord.upperX
       myCoord.splitVertically()
 
@@ -75,21 +75,23 @@ class CanNode() extends Actor with ActorLogging {
     }
     else
     {
-      log.info("Splitting horizontally for "+BigInt(newNode.path.name.toInt))
+      log.info("Splitting horizontally for "+newNode)
       val oldUpperY=myCoord.upperY
       myCoord.splitHorizontally()
 
-      newNode ! SetCoord(myCoord.lowerX, myCoord.upperY, myCoord.upperX, oldUpperY)
-
+//      newNode ! SetCoord(myCoord.lowerX, myCoord.upperY, myCoord.upperX, oldUpperY)
+//      shardRegion ! EntityEnvelope(newNode,SetCoord(myCoord.lowerX, myCoord.upperY, myCoord.upperX, oldUpperY))
       incomingLowerX=myCoord.lowerX
       incomingLowerY=myCoord.upperY
       incomingUpperX=myCoord.upperX
       incomingUpperY=oldUpperY
     }
 
-    addNbr(newNode,incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY,BigInt(newNode.path.name.toInt))
-    newNode ! AddNeighbor(self,myCoord.lowerX:Double, myCoord.lowerY:Double, myCoord.upperX:Double, myCoord.upperY:Double, myId)
-
+    addNbr(newNode,incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY)
+//    newNode ! AddNeighbor(self,myCoord.lowerX:Double, myCoord.lowerY:Double, myCoord.upperX:Double, myCoord.upperY:Double, myId)
+    shardRegion ! EntityEnvelope(newNode,AddNeighbor( myCoord.lowerX:Double, myCoord.lowerY:Double,
+                                                      myCoord.upperX:Double, myCoord.upperY:Double,
+                                                      myId))
     val incomingCoord= new Coordinate(incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY)
 
     var nbrToRemove = new ListBuffer[BigInt]()
@@ -99,18 +101,24 @@ class CanNode() extends Actor with ActorLogging {
       if((incomingCoord.isAdjacentX(nbrCoord) && incomingCoord.isSubsetY(nbrCoord)) ||
           (incomingCoord.isAdjacentY(nbrCoord) && incomingCoord.isSubsetX(nbrCoord)))
       {
-         n._2.nodeRef ! AddNeighbor(newNode,incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY,BigInt(newNode.path.name.toInt))
-         newNode ! AddNeighbor(n._2.nodeRef,nbrCoord.lowerX,nbrCoord.lowerY,nbrCoord.upperX,nbrCoord.upperY,n._1)
+//         n._2.nodeRef ! AddNeighbor(newNode,incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY,BigInt(newNode.path.name.toInt))
+        shardRegion ! EntityEnvelope(n._1,AddNeighbor(incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY,newNode))
+//        newNode ! AddNeighbor(n._2.nodeRef,nbrCoord.lowerX,nbrCoord.lowerY,nbrCoord.upperX,nbrCoord.upperY,n._1)
+        shardRegion ! EntityEnvelope(newNode,AddNeighbor(nbrCoord.lowerX,nbrCoord.lowerY,nbrCoord.upperX,nbrCoord.upperY,n._1))
       }
 
       if((myCoord.isAdjacentX(nbrCoord) && myCoord.isSubsetY(nbrCoord)) ||
           (myCoord.isAdjacentY(nbrCoord) && myCoord.isSubsetX(nbrCoord))) {
-        n._2.nodeRef ! UpdateNeighbor(myId: BigInt,
-                                      myCoord.lowerX:Double, myCoord.lowerY:Double,
-                                      myCoord.upperX:Double, myCoord.upperY:Double)
+//        n._2.nodeRef ! UpdateNeighbor(myId: BigInt,
+//                                      myCoord.lowerX:Double, myCoord.lowerY:Double,
+//                                      myCoord.upperX:Double, myCoord.upperY:Double)
+        shardRegion ! EntityEnvelope(n._1,UpdateNeighbor( myId: BigInt,
+                                                          myCoord.lowerX:Double, myCoord.lowerY:Double,
+                                                          myCoord.upperX:Double, myCoord.upperY:Double))
       }
       else {
-        n._2.nodeRef ! RemoveNeighbor(myId)
+//        n._2.nodeRef ! RemoveNeighbor(myId)
+        shardRegion ! EntityEnvelope(n._1,RemoveNeighbor(myId))
         nbrToRemove.addOne(n._1)
       }
     }
@@ -119,20 +127,20 @@ class CanNode() extends Actor with ActorLogging {
 
   }
 
-  def addNbr(nbrRef: ActorRef,lx:Double,ly:Double,ux:Double,uy:Double, nbrID: BigInt): Unit = {
+  def addNbr(nbrID: BigInt,lx:Double,ly:Double,ux:Double,uy:Double): Unit = {
     val nbrCoord = new Coordinate(lx:Double,ly:Double,ux:Double,uy:Double)
-    val nbr = new Neighbor(nbrRef,nbrCoord,nbrID)
+    val nbr = new Neighbor(nbrCoord,nbrID)
     myNeighbors(nbrID) = nbr
   }
 
-  def findClosestNeighbor(p_x: Double, p_y: Double): Neighbor = {
-    var closestNbr: Neighbor = null
+  def findClosestNeighbor(p_x: Double, p_y: Double): BigInt = {
+    var closestNbr: BigInt = null
     var dist = Double.MaxValue
     for (nbr <- myNeighbors) {
       val nbrDist = nbr._2.nodeCoord.dist(p_x,p_y)
       if (nbrDist < dist) {
         dist = nbrDist
-        closestNbr = nbr._2
+        closestNbr = nbr._1
       }
     }
     closestNbr
@@ -143,6 +151,7 @@ class CanNode() extends Actor with ActorLogging {
     case JoinCan(shardRegionRef: ActorRef, existingNode:BigInt) => {
 //      println("Join called for node:"+ myId)
       log.info("Join called for node:"+ myId)
+      shardRegion = shardRegionRef
       if (existingNode == myId) {
         println("Existing node myID:"+myId+" and existing Node:"+existingNode)
         myCoord = new Coordinate(0,0,xMax,yMax)
@@ -152,7 +161,7 @@ class CanNode() extends Actor with ActorLogging {
         val p_y = scala.util.Random.nextDouble() * yMax
 //        println(p_x,p_y)
         implicit val timeout = Timeout(10 seconds)
-        val future= shardRegionRef ? EntityEnvelope(existingNode,RouteNewNode(p_x, p_y, self))
+        val future= shardRegionRef ? EntityEnvelope(existingNode,RouteNewNode(p_x, p_y, myId))
         val coords = Await.result(future,timeout.duration).asInstanceOf[RouteResponse]
         myCoord = new Coordinate(coords.lx,coords.ly,coords.ux,coords.uy)
 //        peer ! RouteNewNode(p_x, p_y, self)
@@ -172,7 +181,7 @@ class CanNode() extends Actor with ActorLogging {
         log.info("Not in my zone. Finding my closest neighbor to forward request.")
         val closestNeighbor = findClosestNeighbor(p_x,p_y)
         implicit val timeout = Timeout(10 seconds)
-        (closestNeighbor.nodeRef ? RouteNewNode(p_x, p_y, newNode)).pipeTo(sender())
+        (shardRegion ? EntityEnvelope(closestNeighbor,RouteNewNode(p_x, p_y, newNode))).pipeTo(sender())
       }
     }
 
@@ -194,8 +203,8 @@ class CanNode() extends Actor with ActorLogging {
 //      println("------node " + myId + " coords :" + myCoord.getAsString())
     }
 
-    case AddNeighbor(nbrRef: ActorRef,lx:Double,ly:Double,ux:Double,uy:Double, nbrID: BigInt) => {
-      addNbr(nbrRef,lx,ly,ux,uy,nbrID)
+    case AddNeighbor(lx:Double,ly:Double,ux:Double,uy:Double, nbrID: BigInt) => {
+      addNbr(nbrID,lx,ly,ux,uy)
     }
 
     case RemoveNeighbor(nbrID: BigInt) => {
@@ -214,7 +223,7 @@ class CanNode() extends Actor with ActorLogging {
       }
       else {
         val closestNeighbor = findClosestNeighbor(key._1,key._2)
-        closestNeighbor.nodeRef ! WriteData(key,value)
+        shardRegion ! EntityEnvelope(closestNeighbor,WriteData(key,value))
       }
     }
 
@@ -231,7 +240,7 @@ class CanNode() extends Actor with ActorLogging {
       }
       else {
         val closestNeighbor = findClosestNeighbor(key._1,key._2)
-        closestNeighbor.nodeRef ! ReadData(key)
+        shardRegion ! EntityEnvelope(closestNeighbor,ReadData(key))
       }
     }
 
