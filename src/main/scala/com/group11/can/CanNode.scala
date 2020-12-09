@@ -65,9 +65,6 @@ class CanNode() extends Actor with ActorLogging {
       log.info("Splitting vertically for "+newNode)
       val oldUpperX=myCoord.upperX
       myCoord.splitVertically()
-
-//      newNode ! SetCoord(myCoord.upperX, myCoord.lowerY, oldUpperX, myCoord.upperY)
-
       incomingLowerX=myCoord.upperX
       incomingLowerY=myCoord.lowerY
       incomingUpperX=oldUpperX
@@ -79,8 +76,6 @@ class CanNode() extends Actor with ActorLogging {
       val oldUpperY=myCoord.upperY
       myCoord.splitHorizontally()
 
-//      newNode ! SetCoord(myCoord.lowerX, myCoord.upperY, myCoord.upperX, oldUpperY)
-//      shardRegion ! EntityEnvelope(newNode,SetCoord(myCoord.lowerX, myCoord.upperY, myCoord.upperX, oldUpperY))
       incomingLowerX=myCoord.lowerX
       incomingLowerY=myCoord.upperY
       incomingUpperX=myCoord.upperX
@@ -88,7 +83,6 @@ class CanNode() extends Actor with ActorLogging {
     }
 
     addNbr(newNode,incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY)
-//    newNode ! AddNeighbor(self,myCoord.lowerX:Double, myCoord.lowerY:Double, myCoord.upperX:Double, myCoord.upperY:Double, myId)
     shardRegion ! EntityEnvelope(newNode,AddNeighbor( myCoord.lowerX:Double, myCoord.lowerY:Double,
                                                       myCoord.upperX:Double, myCoord.upperY:Double,
                                                       myId))
@@ -101,23 +95,20 @@ class CanNode() extends Actor with ActorLogging {
       if((incomingCoord.isAdjacentX(nbrCoord) && incomingCoord.isSubsetY(nbrCoord)) ||
           (incomingCoord.isAdjacentY(nbrCoord) && incomingCoord.isSubsetX(nbrCoord)))
       {
-//         n._2.nodeRef ! AddNeighbor(newNode,incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY,BigInt(newNode.path.name.toInt))
         shardRegion ! EntityEnvelope(n._1,AddNeighbor(incomingLowerX,incomingLowerY,incomingUpperX,incomingUpperY,newNode))
-//        newNode ! AddNeighbor(n._2.nodeRef,nbrCoord.lowerX,nbrCoord.lowerY,nbrCoord.upperX,nbrCoord.upperY,n._1)
+
         shardRegion ! EntityEnvelope(newNode,AddNeighbor(nbrCoord.lowerX,nbrCoord.lowerY,nbrCoord.upperX,nbrCoord.upperY,n._1))
       }
 
       if((myCoord.isAdjacentX(nbrCoord) && myCoord.isSubsetY(nbrCoord)) ||
           (myCoord.isAdjacentY(nbrCoord) && myCoord.isSubsetX(nbrCoord))) {
-//        n._2.nodeRef ! UpdateNeighbor(myId: BigInt,
-//                                      myCoord.lowerX:Double, myCoord.lowerY:Double,
-//                                      myCoord.upperX:Double, myCoord.upperY:Double)
+
         shardRegion ! EntityEnvelope(n._1,UpdateNeighbor( myId: BigInt,
                                                           myCoord.lowerX:Double, myCoord.lowerY:Double,
                                                           myCoord.upperX:Double, myCoord.upperY:Double))
       }
       else {
-//        n._2.nodeRef ! RemoveNeighbor(myId)
+
         shardRegion ! EntityEnvelope(n._1,RemoveNeighbor(myId))
         nbrToRemove.addOne(n._1)
       }
@@ -153,7 +144,6 @@ class CanNode() extends Actor with ActorLogging {
       log.info("Join called for node:"+ myId)
       shardRegion = shardRegionRef
       if (existingNode == myId) {
-        println("Existing node myID:"+myId+" and existing Node:"+existingNode)
         myCoord = new Coordinate(0,0,xMax,yMax)
       }
       else {
@@ -198,9 +188,9 @@ class CanNode() extends Actor with ActorLogging {
     }
 
     case SetCoord(l_X: Double, l_Y: Double, u_X:Double, u_Y:Double) => {
-//      println("node " + myId + " updating my coord")
+
       myCoord.setCoord(l_X, l_Y, u_X, u_Y)
-//      println("------node " + myId + " coords :" + myCoord.getAsString())
+
     }
 
     case AddNeighbor(lx:Double,ly:Double,ux:Double,uy:Double, nbrID: BigInt) => {
