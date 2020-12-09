@@ -19,8 +19,10 @@ object CanMessageTypes {
   case class RouteResponse(lx:Double,ly:Double,ux:Double,uy:Double)
   case class PrintNeighbors()
 
-  case class WriteData(key:(Double,Double), value:Int)
-  case class ReadData(key:(Double,Double))
+  case class WriteData(key:(Double,Double), value:Int, hops:Int)
+  case class ReadData(key:(Double,Double), hops: Int)
 
   final case class EntityEnvelope(id: BigInt, payload: Any)
+
+  case class GetStats()
 }

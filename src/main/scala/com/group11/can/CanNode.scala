@@ -46,6 +46,8 @@ class CanNode() extends Actor with ActorLogging {
   val myData = new mutable.HashMap[(Double,Double),Int]()
   val myId=BigInt(self.path.name)
   var shardRegion: ActorRef = null
+
+  var requestsSatisfied = 0
   def nbrsAsString(): String = {
     var str = ""
     for (n <- myNeighbors) {
@@ -149,7 +151,7 @@ class CanNode() extends Actor with ActorLogging {
       else {
         val p_x = scala.util.Random.nextDouble() * xMax
         val p_y = scala.util.Random.nextDouble() * yMax
-//        println(p_x,p_y)
+//        log.info("Join called for node:"+ myId+" x: "+p_x+" y: "+p_y)
         implicit val timeout = Timeout(10 seconds)
         val future= shardRegionRef ? EntityEnvelope(existingNode,RouteNewNode(p_x, p_y, myId))
         val coords = Await.result(future,timeout.duration).asInstanceOf[RouteResponse]
@@ -161,14 +163,14 @@ class CanNode() extends Actor with ActorLogging {
 
     case RouteNewNode(p_x, p_y, newNode) => {
 //      println("Route request received at "+myId)
-      log.info("Route request received at "+myId)
+      log.info("Route request received at "+myId+" for "+newNode)
       if (myCoord.hasPoint(p_x,p_y)) {
-        log.info("Point lies in my zone, splitting my zone.")
+        log.info("Point lies in my zone, splitting my zone. ")
         val (lx,ly,ux,uy) = splitMyZone(newNode)
         sender() ! RouteResponse(lx,ly,ux,uy)
       }
       else {
-        log.info("Not in my zone. Finding my closest neighbor to forward request.")
+        log.info("Not in my zone. Finding my closest neighbor to forward request. my coord: "+myCoord.getAsString())
         val closestNeighbor = findClosestNeighbor(p_x,p_y)
         implicit val timeout = Timeout(10 seconds)
         (shardRegion ? EntityEnvelope(closestNeighbor,RouteNewNode(p_x, p_y, newNode))).pipeTo(sender())
@@ -205,33 +207,46 @@ class CanNode() extends Actor with ActorLogging {
       myNeighbors(nbrID).nodeCoord.setCoord(lx:Double,ly:Double,ux:Double,uy:Double)
     }
 
-    case WriteData(key:(Double,Double), value:Int) => {
+    case WriteData(key:(Double,Double), value:Int, hops:Int) => {
       log.info("WriteRequest at node "+myId+" for key "+key)
       if (myCoord.hasPoint(key._1,key._2)) {
         log.info("Point lies in "+myId+" write "+key+" to myData")
         myData.addOne(key,value)
+        requestsSatisfied += 1
+        sender() ! hops
       }
       else {
         val closestNeighbor = findClosestNeighbor(key._1,key._2)
-        shardRegion ! EntityEnvelope(closestNeighbor,WriteData(key,value))
+        val total_hops = hops + 1
+        implicit val timeout = Timeout(10 seconds)
+        (shardRegion ? EntityEnvelope(closestNeighbor,WriteData(key,value,total_hops))).pipeTo(sender())
       }
     }
 
-    case ReadData(key:(Double,Double)) => {
+    case ReadData(key:(Double,Double), hops:Int) => {
       log.info("ReadRequest at node "+myId+" for key "+key)
       if (myCoord.hasPoint(key._1,key._2)) {
         log.info("Point lies in "+myId+", get from myData")
         if (myData.contains(key)) {
           log.info("key : " + key + " value : " + myData(key))
+          requestsSatisfied += 1
+          sender() ! hops
         }
         else {
           log.info("Failed to find key in myData. Node : "+myId+" key : "+key)
+          sender() ! hops
         }
       }
       else {
         val closestNeighbor = findClosestNeighbor(key._1,key._2)
-        shardRegion ! EntityEnvelope(closestNeighbor,ReadData(key))
+        val total_hops = hops + 1
+        implicit val timeout = Timeout(10 seconds)
+        (shardRegion ? EntityEnvelope(closestNeighbor,ReadData(key,total_hops))).pipeTo(sender())
       }
+    }
+
+    case GetStats() => {
+      sender() ! requestsSatisfied
     }
 
     case PrintNeighbors => {

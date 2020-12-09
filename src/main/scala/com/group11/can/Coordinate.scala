@@ -18,26 +18,20 @@ class Coordinate(var lowerX:Double, var lowerY:Double, var upperX:Double, var up
     centerY= (lowerY + upperY)/2
   }
   def canSplitVertically: Boolean = {
-    if (upperX - lowerX >= upperY - lowerY)
-      return true
-    false
+    upperX - lowerX >= upperY - lowerY
   }
 
   def isSubsetX(coordinate_point: Coordinate): Boolean = {
-    if ((coordinate_point.lowerX >= lowerX && coordinate_point.upperX <= upperX) || (coordinate_point.lowerX <= lowerX && coordinate_point.upperX >= upperX))
-      return true
-    false
+    (coordinate_point.lowerX >= lowerX && coordinate_point.upperX <= upperX) ||
+      (coordinate_point.lowerX <= lowerX && coordinate_point.upperX >= upperX)
   }
 
   def isSubsetY(coordinate_point: Coordinate): Boolean = {
-    if ((coordinate_point.lowerY >= lowerY && coordinate_point.upperY <= upperY) || (coordinate_point.lowerY <= lowerY && coordinate_point.upperY >= upperY))
-      return true
-    false
+    (coordinate_point.lowerY >= lowerY && coordinate_point.upperY <= upperY) ||
+      (coordinate_point.lowerY <= lowerY && coordinate_point.upperY >= upperY)
   }
 
   def hasPoint(p_x: Double, p_y: Double): Boolean = {
-//    println(lowerX+" "+p_x+" "+upperX)
-//    println(lowerY+" "+p_y+" "+upperY)
     lowerX<=p_x && p_x<upperX && lowerY<=p_y && p_y<upperY
   }
 
@@ -45,15 +39,11 @@ class Coordinate(var lowerX:Double, var lowerY:Double, var upperX:Double, var up
     Math.sqrt(Math.pow(Math.abs(p_x - centerX),2) + Math.pow(Math.abs(p_y - centerY),2))
   }
   def isAdjacentX(coordinate_point: Coordinate): Boolean = {
-    if ((coordinate_point.upperX == lowerX)||(coordinate_point.lowerX == upperX))
-      return true
-    false
+    (coordinate_point.upperX == lowerX)||(coordinate_point.lowerX == upperX)
   }
 
   def isAdjacentY(coordinate_point: Coordinate): Boolean = {
-    if ((coordinate_point.lowerY == upperY) || (coordinate_point.upperY == lowerY))
-      return true
-    false
+    (coordinate_point.lowerY == upperY) || (coordinate_point.upperY == lowerY)
   }
 
   def splitVertically(): Unit = {
