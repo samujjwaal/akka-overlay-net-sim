@@ -25,16 +25,10 @@ object Main {
     val numNodes: Int = conf.getInt("networkConstants.numNodes")
     val netConf = conf.getConfig("networkConstants")
     val userConf = conf.getConfig("userConstants")
+
+    // Create Chord System
     implicit val chordSystem = ActorSystem(netConf.getString("networkSystemName"))
-
     val chordNodesId = new ListBuffer[BigInt]()
-
-//    val chordMaster = chordSystem.actorOf(ChordMaster.props())
-//    implicit val timeout: Timeout = Timeout(20.seconds)
-//    val future = chordMaster ? CreateNodes
-//    val createNodesReply = Await.result(future, timeout.duration).asInstanceOf[CreateNodesReply]
-
-
     val chordShardRegion: ActorRef = ClusterSharding(chordSystem).start(
       typeName = "ChordNodeRegion",
       entityProps = Props[ChordClassicNode](),
@@ -43,31 +37,27 @@ object Main {
       extractShardId = ChordClassicNode.extractShardId
     )
 
+    // Add first node to Chord network
     var hashID = BigInt(0)
     val peer=hashID
-    //chordShardRegion ? EntityEnvelope(hashID, CJoinNetwork(chordShardRegion,peer))
     implicit val timeout = Timeout(15 seconds)
     val future = chordShardRegion ? EntityEnvelope(hashID , CJoinNetwork(chordShardRegion,peer))
     val joinStatus = Await.result(future,timeout.duration).asInstanceOf[CJoinStatus]
-    //val poc = context.actorOf(ChordClassicNode.props(hashID), hashID.toString())
     chordNodesId += hashID
-    //chordNodesRef.addOne(hashID,poc)
 
+    // Add remaining nodes to Chord network
     while (chordNodesId.size < numNodes) {
-      //    val hashID=ChordUtils.md5(chordNodes.size.toString)
       val hashID = BigInt(scala.util.Random.nextInt(conf.getInt("networkConstants.nodeSpace")))
       if (!(chordNodesId.contains(hashID))) {
-        //val newNode = context.actorOf(ChordClassicNode.props(hashID), hashID.toString())
         implicit val timeout = Timeout(15 seconds)
         val future = chordShardRegion ? EntityEnvelope(hashID , CJoinNetwork(chordShardRegion,peer))
         val joinStatus = Await.result(future,timeout.duration).asInstanceOf[CJoinStatus]
-        //log.info("Join status "+joinStatus.status+" for node "+hashID.toString)
         chordNodesId += hashID
-        //chordNodesRef.addOne(hashID,newNode)
         Thread.sleep(100)
       }
     }
 
+    // Print finger tables of all nodes
 //    println("All nodes created...")
 //    Thread.sleep(1000)
 //    println("Printing all finger tables -----")
@@ -84,15 +74,12 @@ object Main {
     dataList.addOne(Array("7", "2000"))
     dataList.addOne(Array("14", "1996"))
     dataList.addOne(Array("20", "1920"))
-    dataList.foreach(data => {
+    dataList.foreach( data => {
       val key = data(0)
       val value = data(1)
-      val rnd = new Random
-      val randomNum = 0 + rnd.nextInt((chordNodesId.size - 0) + 1)
-      val randNode= chordNodesId(0)
+      val randNode= chordNodesId(scala.util.Random.nextInt(chordNodesId.size))
       chordShardRegion  ! EntityEnvelope(randNode,CWriteKeyValue(BigInt(key), value.toInt))
-      //initialWriteCounter.addAndGet(1)
-    })
+    } )
 
     Thread.sleep(2000)
     val server = new HTTPServer()
