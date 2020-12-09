@@ -95,7 +95,7 @@ object ChordMain {
       if (!dataKeys.contains(key)) {
         data.addOne((key, value))
         dataKeys.addOne(key)
-        println("key : "+key+" val : "+value)
+//        println("key : "+key+" val : "+value)
       }
     }
 
