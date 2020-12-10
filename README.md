@@ -75,8 +75,7 @@ Hops here denote the number of times the request is passed from one node to the 
 
 | Configuration | Chord         | CAN  |
 | ------------- |:-------------:| -----:|
-| Nodes= 10, <br/> Requests=40    | (4, 5.6) <br/>
-                                      (4, 5.6) <br/> (4, 5.8) <br/> (4, 4.9) <br/> (4, 4.9) | (4, 2) <br/> (4, 1.5) <br/> (4, 1.8) <br/> (4, 1.857) <br/> (4, 1.628)|
+| Nodes= 10, <br/> Requests=40    | (4, 5.6) <br /> (4, 5.6) <br /> (4, 5.8) <br /> (4, 4.9) <br /> (4, 4.9) | (4, 2) <br /> (4, 1.5) <br /> (4, 1.8) <br/> (4, 1.857) <br/> (4, 1.628)|
 | Nodes= 15, <br/> Requests=50      | (2.9, 9.2) <br/> (2.86, 7.62) <br/> (3.2, 7.35) <br/> (2.1, 6.46) <br/> (3.33, 6.67)     |  (2.8, 2.62) <br/> (3.33, 2.2) <br/> (3.33, 2.5) <br/> (3.3, 2.2) <br/> (3,2.27) |
 
 We ran the simulation multiple times for each configuration to get an average approximation of network performance.
