@@ -69,17 +69,24 @@ The GET request is used to read a value given that the user provides a key. The 
 
 ##Analysis
 
+As a part of our analysis we ran both the algorithms for a few predefined configurations. Their performance in terms of average request serviced per node and average hops per node. 
+Hops here denote the number of times the request is passed from one node to the next when the current node is not responsible for the data key.
+
+
 | Configuration | Chord         | CAN  |
 | ------------- |:-------------:| -----:|
-| Nodes= 10, <br/> Requests=20    | (4, 5.6) <br/> (4, 5.6) <br/> (4, 5.8) <br/> (4, 4.9) <br/> (4, 4.9) | (4, 2) <br/> (4, 1.5) <br/> (4, 1.8) <br/> (4, 1.857) <br/> (4, 1.628)|
+| Nodes= 10, <br/> Requests=40    | (4, 5.6) <br/> (4, 5.6) <br/> (4, 5.8) <br/> (4, 4.9) <br/> (4, 4.9) | (4, 2) <br/> (4, 1.5) <br/> (4, 1.8) <br/> (4, 1.857) <br/> (4, 1.628)|
 | Nodes= 15, <br/> Requests=50      | (2.9, 9.2) <br/> (2.86, 7.62) <br/> (3.2, 7.35) <br/> (2.1, 6.46) <br/> (3.33, 6.67)     |  (2.8, 2.62) <br/> (3.33, 2.2) <br/> (3.33, 2.5) <br/> (3.3, 2.2) <br/> (3,2.27) |
 
+We ran the simulation multiple times for each configuration to get an average approximation of network performance.
+From the above observations, we can see that the average hops per request is higher for Chord than CAN. 
+For Chord, the number of hops per request is approximately 5 for when there are 10 nodes in the network. 
+Whereas in CAN, the number of hops per request is approximately 1.75 i.e. it varies between 1 and 2 for 10 nodes.
+CAN consistently has lesser number of hops for same number of nodes and requests. This is due to the dimensionality of the key space. 
+In Chord, the direction in which a request can be passed around is 1 dimensional, but in CAN a request is mapped to a multidimensional space due to which it has a higher probability to find the relevant node in lesser hops.
+Latency increases as the number of hops increase. 
+Still, both the algorithms reduce the average hops from a brute force linear search approach where a request goes to every node one by one to find the key.
 
-
-
-
-
- 
 
 
 ## Instructions to Execute
