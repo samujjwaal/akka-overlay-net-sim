@@ -1,6 +1,6 @@
-# Homework 3 : 
+# CS 441 Project : 
 
-### Description: Design and implement an Actor-based computational model for the Chord overlay network algorithm
+### Description: Design and implement an Actor-based computational model for the Chord and CAN overlay network algorithms
 
 ## Team Members (Group 11)
 
@@ -11,19 +11,32 @@ Avani Mande (amande6)
 Samujjwaal Dey (sdey9)
 
 ## Overview
-As part of this project a cloud simulation is implemented based on the Chord overlay network algorithm using the Akka typed actor model. 
+As part of this project a cloud simulation is implemented based on the Chord and CAN overlay network algorithms using the Akka cluster sharding actor model. 
 
-The simulation has three main components. The user system which generates user actors and sends read or write requests to the http server. The http server is another component which forwards these requests to the chord system. 
+The simulation has two main components. CAN and Chord algorithms take data read and data write requests and service them appropriately. Akka HTTP server is used to send read/write requests.
 
+##Cluster Sharding
+
+The project uses the cluster sharding model provided by Akka. In this, actors are distributed across shards. A group of shards forms a shard region where one shard can multiple entity actors. A shard region constitutes of a group of shards.
+The entities have some state, i.e. data that each entity owns. In our project for the Chord algorithm, the Chord nodes act as entities which store the data as key value pairs. 
+And for the CAN algorithm each entity represents a node which is in charge of a zone in the coordinate space.
+When a read or a write request is received, the Chord/ CAN algorithm is used to determine which node is responsible for the data and then the request is routed using entity ID and shard ID to the correct entity on the specific shard hosting the entity.
+This means that we do not have to worry about the physical location of the nodes and only need the logical identifier. Messages are sent to the entities using their identifiers. The shard region actor reference is used to route the message to the the final destination entity using the entity ID. 
+
+
+##CAN Algorithm
+The Content Addressable Network Algorithm makes use of a coordinate space. Nodes are in charge of zones in the space. Data is mapped to a coordinate point in the space and then routed through the network to reach the
+node in charge of the zone in which the point lies in. Each node keeps a track of its neighbors which are used while routing request to the correct node. When a node joins the network, it does so by choosing a point in 
+the coordinate space. The node which is in charge of the region in which the point lies is in then splits its zones and neighbors of both the nodes are updated.
+When a node leaves the system zones are merged with a suitable neighbor. 
 
 
 ## Chord Algorithm
 
 The Chord algorithm uses convergent hashing which when given a key returns a value. It is a peer to peer distributed hash table. 
-Solves problem of locating a data item in a collection of distributed nodes, considering frequent node arrivals and departures
-We implement a simpler version where fault tolerance is not taken into consideration.
-
-
+Solves problem of locating a data item in a collection of distributed nodes, considering frequent node arrivals and departures.
+It consists of a node ring where data lies on a node's successor. A successor is defined as the next node which is present in the system.
+Each node keeps a finger table which is used for request routing.
 
 ## Akka HTTP
 
@@ -34,29 +47,24 @@ The GET request is used to read a value given that the user provides a key. The 
 
 ## Application Design
 
-### Some Important Files
+### Some Important Files In CAN
+- `CanMessageTypes` lists all the types types of messages that can be processed by the CAN node actor. 
+- `CanNode` is the class for modelling a single node in the CAN system. Each node is an akka actor and can process messages.
+- `Coordinate` class defines the coordinate point and functions associated for performing operations on the coordinate space.
+- `Neighbor` defines an entry in the neighbor table kept by every node. 
+- `CANmain` is the driver class for the CAN algorithm simulation. 
 
-- The file `MessageTypes` lists all the types of messages that can be processed by the chord node actor,user actor, chord actor system and for data request.
-- `ChordNode` is the class for modelling a single node in the Chord ring. Each node is an akka actor and can process protocol messages of the type `NodeCommand` to alter it’s state or behavior.
-  - The state of the `ChordNode` actor stores node references and node hash values of its successor & predecessor nodes, the current node’s fingertable and the data being stored on the node.
+### Some Important Files In Chord
+
+- The file `ClassicMessageTypes` lists all the types of messages that can be processed by the chord node actor.
+- `ChordClassicNode` is the class for modelling a single node in the Chord ring. Each node is an akka actor and can process protocol messages of the type `NodeCommand` to alter it’s state or behavior.
+  - The state of the `ChordNode` actor stores node IDs and node hash values of its successor & predecessor nodes, the current node’s fingertable and the data being stored on the node.
   - The messages are sent to the actor using the tell/ask actor interaction patterns to perform operation on the chord node like joining the chord network, updating node finger table and display finger table status. 
-- `Finger` case class defines each finger entry in a node’s finger table. A case class is used as the compiler provides in-built getter, setter and other boilerplate code. Each finger table entry stores the hash value of the start index, node reference and node hash value of the successor node w.r.t the start index.
-- `ChordHttpServer` defines an actor that will operate as the Akka HTTP server and the Chord node server. It can process protocol messages of type `ChordSystemCommand`. The server spawns actors for each chord node and adds it to a hashmap storing node IDs and node references. A node is selected from this hashmap in random and added to the chord system using the ask actor interaction pattern.
-- `User` is the class for modelling a user in the overlay network. Each user is an akka actor and can accept protocol messages of type `DataRequest`
-- `UserSystem` defines the actor responsible to create multiple users for the overlay system and simulate their operations.
+- `Finger` case class defines each finger entry in a node’s finger table. A case class is used as the compiler provides in-built getter, setter and other boilerplate code. Each finger table entry stores the hash value of the start index and node hash value of the successor node w.r.t the start index.
+- `HTTPServer` defines an actor that will operate as the Akka HTTP server and the Chord node server. It can process protocol messages of type `ChordSystemCommand`. The server spawns actors for each chord node and adds it to a list storing node IDs. A node is selected from this list in random and added to the chord system using the ask actor interaction pattern.
 - `ChordUtils` defines the `md5()` hashing function used to generate the hash values for chord node IDs and key positions in the chord ring.
 - `Utils` defines the methods for generating random requests to the overlay network. The function `randomlySelectRequestType()` determines whether the next request generated by the user will be a data read or data write request. While the function `randomlySelectDataIndex()` selects random index of a data from the file to perform the read/write request.
-- `Main` is the driver class for the simulation. It is responsible for instantiation of the `ChordHttpServer` and `UserSystem` actor systems.
-
-
-
-## Data Used
-
-The data that we use here for this simulation is available in resourses/listfile.txt and contains comma-separated-values of a title song and its release year.
-The user uses this data to query for a song year given a song title. The link from which the dataset is obtained is given here. http://millionsongdataset.com/pages/getting-dataset/
-
-A small subset of the dataset is chosen. The data is preprocessed in python to retrieve just two characteristics namely the song name and song year. 
-
+- `ChordMain` is the driver class for the Chord simulation. It is responsible for instantiation of the `ChordHttpServer` and `UserSystem` actor systems.
 
 
 ## Instructions to Execute
