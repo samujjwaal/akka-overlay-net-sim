@@ -1,4 +1,4 @@
-name := "hw3"
+name := "group11_project"
 
 version := "0.1"
 
@@ -21,7 +21,5 @@ libraryDependencies ++= Seq(
   "org.scalactic" %% "scalactic" % "3.2.2",
   "com.typesafe" % "config" % "1.4.0"
 )
-
-connectInput in run := true
 
 mainClass in(Compile, run) := Some("com.group11.Main")

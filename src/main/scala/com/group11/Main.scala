@@ -2,29 +2,29 @@ package com.group11
 
 import com.group11.can.CANmain
 import com.group11.hw3.ChordMain
+import org.slf4j.LoggerFactory
 
-import java.util.Scanner
 import scala.io.StdIn.{readChar, readInt}
 import scala.sys.exit
 
 object Main {
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   def main(args: Array[String]): Unit = {
     var repeat = 'y'
     do{
       println("\n----- Overlay Network Simulation -----\n")
       println("1. Chord Algorithm")
-      println("2. CAN Algorithm")
-      println("3. Exit\n")
+      println("2. CAN Algorithm\n")
       print("Enter your choice.. ")
-//      val choice = sc.nextInt()
       val choice = readInt()
-      if(choice==1)
+      if(choice==1) {
+        logger.info(" -- Simulating Chord Algorithm -- \n")
         ChordMain.execute()
-      else if(choice==2)
+      } else if(choice==2) {
+        logger.info(" -- Simulating CAN Algorithm -- \n")
         CANmain.execute()
-      else if(choice == 3)
-        exit(0)
+      }
       else
         println("Invalid Choice !!")
 
@@ -33,9 +33,8 @@ object Main {
     }
     while (repeat.toLower == 'y')
 
-//    if (args(0) == "1")
-//      ChordMain.execute()
-
+    logger.info("\nExiting Simulation")
+    logger.info("\nDetailed logs available in project.log")
   }
 
 }

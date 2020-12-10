@@ -6,14 +6,16 @@
             <level>INFO</level>
         </filter>
         <encoder>
-            <pattern>[%date{ISO8601}] [%level] [%logger] [%marker] [%thread] - %msg %n</pattern>
+<!--            <pattern>[%d{HH:mm:ss}] [%level] [%logger] [%thread] - %msg %n</pattern>-->
+            <pattern>[%d{HH:mm:ss} | %level | %logger | %thread] - %msg %n</pattern>
         </encoder>
     </appender>
 
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-        <file>target/myapp-dev.log</file>
+        <file>project.log</file>
+        <append>false</append>
         <encoder>
-            <pattern>[%date{ISO8601}] [%level] [%logger] [%marker] [%thread] - %msg MDC: {%mdc}%n</pattern>
+            <pattern>[%d{HH:mm:ss} | %level | %logger | %thread] - %msg %n</pattern>
         </encoder>
     </appender>
 
