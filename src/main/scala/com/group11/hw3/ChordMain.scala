@@ -136,7 +136,7 @@ object ChordMain {
     }
 
     Thread.sleep(1000)
-    val hopsPerReq = server.hopsPerReq
+    val hopsPerReq = server.hopsPerReq.toDouble
     var reqPerNode = 0.toDouble
     for (node <- chordNodesId) {
       val future = (chordShardRegion ? EntityEnvelope(node, GetStats())).mapTo[Int]
