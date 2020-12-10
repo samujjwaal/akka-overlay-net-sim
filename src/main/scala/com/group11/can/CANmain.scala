@@ -1,8 +1,8 @@
 package com.group11.can
 
-import akka.pattern.ask
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings}
+import akka.pattern.ask
 import akka.util.Timeout
 import com.group11.can.CanMessageTypes._
 import com.typesafe.config.{Config, ConfigFactory}
@@ -11,7 +11,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContext}
 import scala.language.postfixOps
-import scala.util.{Failure, Success}
+import scala.util.Success
 
 object CANmain {
   def main(args: Array[String]): Unit = {
@@ -128,6 +128,8 @@ object CANmain {
 
     println("avg req per node = "+reqPerNode/numNodes)
     println("avg hops per req = "+hopsPerReq/totalRequests)
+
+    canSystem.terminate()
 
   }
 

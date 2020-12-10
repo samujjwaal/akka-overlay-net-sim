@@ -1,23 +1,23 @@
 package com.group11.hw3
 
 import akka.actor.{ActorRef, ActorSystem}
-import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives.{complete, concat, get, parameters, path, post}
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 
+import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
 
 class HTTPServer {
   val conf: Config = ConfigFactory.load("application.conf")
   val netConf = conf.getConfig("networkConstants")
-  var bindingFuture: Future[Http.ServerBinding] = _
-
+  //var bindingFuture: Future[Http.ServerBinding] = _
+  //var chordActorSystem : ActorSystem=_
   def setupServer(chordSystem: ActorSystem, chordShardRegionRef:ActorRef,chordNodes: List[BigInt]): Route = {
     //Define http server
+    //chordActorSystem=chordSystem
     val route = path("chordRoot") {
       concat(
         get {
@@ -41,5 +41,11 @@ class HTTPServer {
     route
 
   }
+
+//  def stopServer(): Unit =
+//  {
+//    implicit val execContext:ExecutionContextExecutor=chordActorSystem.dispatcher
+//      bindingFuture.flatMap(_.unbind())
+//  }
 
 }

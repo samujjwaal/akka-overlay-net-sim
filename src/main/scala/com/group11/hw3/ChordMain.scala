@@ -7,10 +7,10 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.group11.hw3.chord.ChordClassicNode
 import com.typesafe.config.{Config, ConfigFactory}
-import scalaj.http.{ HttpOptions, HttpRequest}
+import scalaj.http.{HttpOptions, HttpRequest}
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.Await
+import scala.concurrent.{Await, ExecutionContextExecutor}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -78,7 +78,7 @@ object ChordMain {
     Thread.sleep(1000)
     val server = new HTTPServer()
     val r=server.setupServer(chordSystem,chordShardRegion,chordNodesId.toList)
-    Http().bindAndHandle(r, "localhost")
+    val bindingFuture=Http().bindAndHandle(r, "localhost")
 
     Thread.sleep(100)
 
@@ -132,6 +132,13 @@ object ChordMain {
         Thread.sleep(100)
       }
     }
+
+    //chordSystem.terminate()
+
+    implicit val execContext:ExecutionContextExecutor=chordSystem.dispatcher
+    bindingFuture
+      .flatMap(_.unbind())
+      .onComplete(_ => chordSystem.terminate())
 
   }
 
