@@ -19,7 +19,7 @@ import scala.util.Success
  * Class used to test the basic working of the akka http server.
  */
 object ChordMain {
-  def main(args: Array[String]): Unit = {
+  def execute(): Unit = {
 
     val conf: Config = ConfigFactory.load("application.conf")
     val numNodes: Int = conf.getInt("networkConstants.numNodes")
@@ -156,6 +156,7 @@ object ChordMain {
       .flatMap(_.unbind())
       .onComplete(_ => chordSystem.terminate())
 
+    Thread.sleep(2000)
   }
 
 }

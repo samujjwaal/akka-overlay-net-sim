@@ -14,7 +14,7 @@ import scala.language.postfixOps
 import scala.util.Success
 
 object CANmain {
-  def main(args: Array[String]): Unit = {
+  def execute(): Unit = {
     val conf: Config = ConfigFactory.load("application.conf")
     val netConf = conf.getConfig("CANnetworkConstants")
 
@@ -130,6 +130,8 @@ object CANmain {
     println("avg hops per req = "+hopsPerReq/totalRequests)
 
     canSystem.terminate()
+
+    Thread.sleep(2000)
 
   }
 
