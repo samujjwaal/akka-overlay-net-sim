@@ -84,7 +84,10 @@ For Chord, the number of hops per request is approximately 5 for when there are 
 Whereas in CAN, the number of hops per request is approximately 1.75 i.e. it varies between 1 and 2 for 10 nodes.
 CAN consistently has lesser number of hops for same number of nodes and requests. This is due to the dimensionality of the key space. 
 In Chord, the direction in which a request can be passed around is 1 dimensional, but in CAN a request is mapped to a multidimensional space due to which it has a higher probability to find the relevant node in lesser hops.
-Latency increases as the number of hops increase. 
+Latency increases as the number of hops increase. In CAN algorithm, the average routing path length is given by the formula 
+
+$ a_1$
+
 Still, both the algorithms reduce the average hops from a brute force linear search approach where a request goes to every node one by one to find the key.
 
 
