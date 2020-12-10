@@ -67,6 +67,7 @@ The GET request is used to read a value given that the user provides a key. The 
 - `ChordMain` is the driver class for the Chord simulation. It is responsible for instantiation of the `ChordHttpServer` and `UserSystem` actor systems.
 
 
+
 ##Analysis
 
 As a part of our analysis we ran both the algorithms for a few predefined configurations. Their performance in terms of average request serviced per node and average hops per node. 
@@ -81,9 +82,6 @@ Whereas in CAN, the number of hops per request is approximately 1.75 i.e. it var
 CAN consistently has lesser number of hops for same number of nodes and requests. This is due to the dimensionality of the key space. 
 In Chord, the direction in which a request can be passed around is 1 dimensional, but in CAN a request is mapped to a multidimensional space due to which it has a higher probability to find the relevant node in lesser hops.
 Latency increases as the number of hops increase. In CAN algorithm, the average routing path length is given by the formula 
-
-
-
 Still, both the algorithms reduce the average hops from a brute force linear search approach where a request goes to every node one by one to find the key.
 
 
