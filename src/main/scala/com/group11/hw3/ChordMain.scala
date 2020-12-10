@@ -13,6 +13,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.{Await, ExecutionContextExecutor}
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.Success
 
 /**
  * Class used to test the basic working of the akka http server.
@@ -28,6 +29,7 @@ object ChordMain {
      Create Chord System
      */
     implicit val chordSystem = ActorSystem(netConf.getString("networkSystemName"))
+    implicit val execContext:ExecutionContextExecutor=chordSystem.dispatcher
     val chordNodesId = new ListBuffer[BigInt]()
     val chordShardRegion: ActorRef = ClusterSharding(chordSystem).start(
       typeName = "ChordNodeRegion",
@@ -133,9 +135,23 @@ object ChordMain {
       }
     }
 
-    //chordSystem.terminate()
+    Thread.sleep(1000)
+    val hopsPerReq = server.hopsPerReq
+    var reqPerNode = 0.toDouble
+    for (node <- chordNodesId) {
+      val future = (chordShardRegion ? EntityEnvelope(node, GetStats())).mapTo[Int]
+      future.onComplete( {
+        case Success(value) => {
+          reqPerNode += value.toDouble
+        }
+      } )
+    }
+    Thread.sleep(1000)
 
-    implicit val execContext:ExecutionContextExecutor=chordSystem.dispatcher
+    println("avg req per node = "+(reqPerNode/numNodes))
+    println("avg hops per req = "+(hopsPerReq/totalRequests))
+
+
     bindingFuture
       .flatMap(_.unbind())
       .onComplete(_ => chordSystem.terminate())

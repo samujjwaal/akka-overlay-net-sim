@@ -45,6 +45,7 @@ class ChordClassicNode() extends Actor with ActorLogging{
   var nodeData = new mutable.HashMap[BigInt,Int]()
   val numFingers: Int = nodeConf.getInt("networkConstants.M")
   var fingerTable = new Array[ClassicFinger](numFingers)
+  var requestsSatisfied = 0
 
   fingerTable.indices.foreach( i =>{
     val start:BigInt = (nodeHash + BigInt(2).pow(i)) % ringSize
@@ -239,7 +240,7 @@ class ChordClassicNode() extends Actor with ActorLogging{
       sender ! CFingerTableStatusResponse(getFingerTableStatus())
     }
 
-    case CReadKeyValue(key: BigInt) => {
+    case CReadKeyValue(key: BigInt, hops: Int) => {
       log.debug("Received read request at node : "+nodeHash+" for key : "+key)
       /*
        If key lies between my predecessor and me, I should store the key value pair.
@@ -250,24 +251,27 @@ class ChordClassicNode() extends Actor with ActorLogging{
         if (nodeData.contains(key)) {
           val value = nodeData(key).toString
           log.info("READ REQUEST key : "+key+" satisfied by node : "+nodeHash+" value : "+value)
-          sender ! CReadResponse(value)
+          requestsSatisfied += 1
+          sender ! CReadResponse(value,hops)
         } else {
           log.error("Key : "+key+" not found at node : "+nodeHash)
-          sender ! CReadResponse("Key :"+key+" not found at node : "+nodeHash)
+          sender ! CReadResponse("Key :"+key+" not found at node : "+nodeHash,hops)
         }
       }
       else if (checkRange(leftInclude = false, nodeHash, fingerTable(0).nodeId, rightInclude = true, key)) {
         implicit val timeout: Timeout = Timeout(10.seconds)
-        (shardRegion ? EntityEnvelope(fingerTable(0).nodeId, CReadKeyValue(key))).pipeTo(sender())
+        val total_hops = hops+1
+        (shardRegion ? EntityEnvelope(fingerTable(0).nodeId, CReadKeyValue(key,total_hops))).pipeTo(sender())
       }
       else {
         implicit val timeout: Timeout = Timeout(10.seconds)
         val target = findClosestPredInFT(key)
-        (shardRegion ? EntityEnvelope(target, CReadKeyValue(key))).pipeTo(sender())
+        val total_hops = hops+1
+        (shardRegion ? EntityEnvelope(target, CReadKeyValue(key,total_hops))).pipeTo(sender())
       }
     }
 
-    case CWriteKeyValue(key: BigInt, value: Int) => {
+    case CWriteKeyValue(key: BigInt, value: Int, hops: Int) => {
       log.debug("Received write request at node : "+nodeHash+" for key : "+key)
       /*
        If key lies between my predecessor and me, I should store the key value pair.
@@ -282,17 +286,28 @@ class ChordClassicNode() extends Actor with ActorLogging{
         else {
           nodeData.addOne(key, value)
         }
+        requestsSatisfied += 1
+        sender() ! CWriteResponse(hops)
       }
       else if (checkRange(leftInclude = false, nodeHash, fingerTable(0).nodeId, rightInclude = true, key)) {
-        shardRegion ! EntityEnvelope(fingerTable(0).nodeId , CWriteKeyValue(key, value))
+        val total_hops = hops+1
+        implicit val timeout: Timeout = Timeout(10.seconds)
+        (shardRegion ? EntityEnvelope(fingerTable(0).nodeId , CWriteKeyValue(key, value,total_hops))).pipeTo(sender())
       }
       else {
         val target = findClosestPredInFT(key)
-        shardRegion ! EntityEnvelope(target , CWriteKeyValue(key, value))
+        val total_hops = hops+1
+        implicit val timeout: Timeout = Timeout(10.seconds)
+        (shardRegion ? EntityEnvelope(target , CWriteKeyValue(key, value,total_hops))).pipeTo(sender())
       }
     }
 
-    case _ => log.info("Chord node actor recieved a generic message.")
+    case GetStats() => {
+//      println(requestsSatisfied)
+      sender() ! requestsSatisfied
+    }
+
+    case _ => log.info("Chord node actor received a generic message.")
 
   }
 

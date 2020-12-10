@@ -20,23 +20,23 @@ case class CUpdateFingerTable(nodeId:BigInt,i:Int,key:BigInt)
 case class CGetFingerTableStatus()
 case class CFingerTableStatusResponse(ft: String)
 
-case class CReadKeyValue(key: BigInt)
-case class CWriteKeyValue(key: BigInt, value: Int)
-case class CReadResponse(message:String)
+case class CReadKeyValue(key: BigInt, hops: Int)
+case class CReadResponse(message:String,hops:Int)
+case class CWriteKeyValue(key: BigInt, value: Int,hops: Int)
+case class CWriteResponse(hops:Int)
+//
+//
+//case class CGetNodeSnapshot()
+//case class CGetNodeSnapshotResponse(snap:JsonObject)
 
 
-
-case class CGetNodeSnapshot()
-case class CGetNodeSnapshotResponse(snap:JsonObject)
-
-
-case class CreateUsers()
-case class StartUserRequests()
+//case class CreateUsers()
+//case class StartUserRequests()
 case class CUserReadReq(key: String)
 case class CUserWriteReq(key: String, value: String)
 
-case class CCaptureGlobalSnapshot()
+//case class CCaptureGlobalSnapshot()
 
 final case class EntityEnvelope(id: BigInt, payload: Any)
 
-
+case class GetStats()
