@@ -1,6 +1,6 @@
 FROM openjdk:8
 
-ENV SBT_VERSION 1.4.0
+ENV SBT_VERSION 1.4.3
 
 RUN \
   curl -L -o sbt-$SBT_VERSION.deb http://dl.bintray.com/sbt/debian/sbt-$SBT_VERSION.deb && \
@@ -11,8 +11,8 @@ RUN \
 
 RUN sbt -Dsbt.rootdir=true update
 
-WORKDIR /hw3
+WORKDIR /group11_project
 
-COPY . /hw3
+COPY . /group11_project
 
 CMD sbt run

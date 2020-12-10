@@ -22,4 +22,6 @@ libraryDependencies ++= Seq(
   "com.typesafe" % "config" % "1.4.0"
 )
 
-mainClass in(Compile, run) := Some("com.group11.hw3.ChordMain")
+connectInput in run := true
+
+mainClass in(Compile, run) := Some("com.group11.Main")
