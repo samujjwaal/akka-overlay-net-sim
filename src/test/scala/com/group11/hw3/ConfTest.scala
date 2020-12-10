@@ -6,12 +6,12 @@ import org.scalatest.funsuite.AnyFunSuite
 class ConfTest extends AnyFunSuite {
 
   test("Check the parsing of config file"){
-    val conf: Config = ConfigFactory.load("TestConfig")
+    val conf: Config = ConfigFactory.load("application")
     assert(!conf.isEmpty)
 
 
-    assert(conf.getString("numUsers").toInt==4)
-    assert(conf.getString("totalRecords").toInt==5000)
+    assert(conf.getString("networkConstants.M").toInt==10)
+    assert(conf.getString("networkConstants.maxKey").toInt==1024)
 
   }
 

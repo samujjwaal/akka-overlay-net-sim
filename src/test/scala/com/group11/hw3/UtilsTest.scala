@@ -1,34 +1,35 @@
 package com.group11.hw3
 
-//import .M
-//import com.group11.hw3.UserConf.totalRecords
-import com.group11.hw3.utils.Utils.{randomlySelectDataIndex, randomlySelectRequestType}
+import com.group11.hw3.utils.ChordUtils.md5
+import com.group11.hw3.utils.Utils.randomlySelectRequestType
+import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.funsuite.AnyFunSuite
 
 import scala.util.control.Breaks.break
 
 class UtilsTest extends AnyFunSuite {
 
-  test("test RandomlySelectRequestType()") {
-//    for(i<- 0 until M) {
-//      val reqType = randomlySelectRequestType()
-//      if(reqType) {
-//        assertThrows[Throwable]{
-//          break
-//        }
-//      }
-//      else {
-//        assert(!reqType)
-//      }
-//    }
+  val conf: Config = ConfigFactory.load("application")
+  val M: Int = conf.getInt("networkConstants.M")
 
+  test("Test MD5 hashing function") {
+    val keyToHash = "DummyKeyValue"
+    val expectedHash = md5(keyToHash)
+    for(i<- 0 until M)
+      assert(expectedHash == md5(keyToHash))
   }
 
-  test("testRandomlySelectDataIndex") {
-//    for(i<- 0 until M) {
-//      val rnd = randomlySelectDataIndex(totalRecords)
-//      assert(rnd > 0 & rnd < totalRecords)
-//    }
+  test("Test RandomlySelectRequestType()") {
+    for(i<- 0 until M) {
+      val reqType = randomlySelectRequestType()
+      if(reqType) {
+        assertThrows[Throwable]{
+          break
+        }
+      }
+      else {
+        assert(!reqType)
+      }
+    }
   }
-
 }
