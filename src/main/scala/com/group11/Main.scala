@@ -28,13 +28,14 @@ object Main {
       else
         println("Invalid Choice !!")
 
-      print("\nExecute again ? .. ")
+      print("\nExecute again (y/n) ?.. ")
       repeat = readChar()
     }
     while (repeat.toLower == 'y')
 
-    logger.info("\nExiting Simulation")
-    logger.info("\nDetailed logs available in project.log")
+    println()
+    logger.info("\nExiting Simulation\n")
+    logger.info("Detailed logs available in project.log")
   }
 
 }

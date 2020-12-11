@@ -11,7 +11,7 @@ class CANUtilsTest extends AnyFunSuite {
 
   test("Test CAN coordinate Zone creation") {
     val zone = new Coordinate(0, 0, xMax, yMax)
-    println(zone.getAsString())
+    assert(zone.upperX==xMax)
   }
 
   test("Test CAN coordinate Zone splitting") {
@@ -23,7 +23,6 @@ class CANUtilsTest extends AnyFunSuite {
     assert(zone.centerY==yMax/2)
 
     zone.setCoord(2,3,5,7)
-    println(zone.getAsString())
     assert(!zone.canSplitVertically)
 
   }
