@@ -1,3 +1,5 @@
+![workflow status](https://github.com/samujjwaal/can-akka/workflows/Test%20and%20Docker%20Deploy/badge.svg)
+
 # CS 441 Course Project
 
 ## Description: Design and implement an Actor-based computational model for the Chord and CAN overlay network algorithms
