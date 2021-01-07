@@ -2,14 +2,14 @@ name: Test and Docker Deploy
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
-    sbt-test:
-      runs-on: ubuntu-latest
-      steps:
+  sbt-test:
+    runs-on: ubuntu-latest
+    steps:
       - name: Check out the code
         uses: actions/checkout@v2
       - name: Set up JDK 1.8
@@ -18,24 +18,23 @@ jobs:
           java-version: 1.8
       - name: Run test cases
         run: sbt test
-      
-    docker-deploy:
-      needs: [sbt-test]
-      runs-on: ubuntu-latest
-      steps:
-        - name: Login to DockerHub
-          uses: docker/login-action@v1 
-          with:
-            username: ${{ secrets.DOCKERHUB_USERNAME }}
-            password: ${{ secrets.DOCKERHUB_PASSWORD }}
-        - name: Build and push
-          uses: docker/build-push-action@v2
-          with:
-            push: true
-            tags: samcs441/cs441_project:latest
-            build-args: |
-              arg1=value1
-              arg2=value2
-        -
-          name: Image digest
-          run: echo ${{ steps.docker_build.outputs.digest }
+
+  docker-deploy:
+    needs: [sbt-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: samcs441/cs441_project:latest
+          build-args: |
+            arg1=value1
+            arg2=value2
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }
