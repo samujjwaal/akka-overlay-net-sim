@@ -104,13 +104,13 @@ Still, both the algorithms reduce the average hops from a brute force linear sea
 4. Push image to Docker Hub using,
    `docker push samcs441/cs441_project:latest`
 
-5. Above 2 steps can be automated using Bitbucket Pipelines CI/CD service. The build script can be defined in the `bitbucket-pipelines.yml` file to be executed each time changes are pushed to the remote repository.
+5. Above 2 steps can be automated using GitHub Actions CI/CD service. The workflow is defined in [`sbt-docker.yml`](.github/workflows/sbt-docker.yml), which is triggered each time changes are pushed to the remote repository.
 
 ## Instructions to Execute
 
 ### Using SBT
 
-1. Clone this repository from Bitbucket
+1. Clone this repository from GitHub
 2. Compile the project using,
    `sbt clean compile`
 3. Execute the test cases using,
