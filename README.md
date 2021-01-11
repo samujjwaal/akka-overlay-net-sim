@@ -1,4 +1,8 @@
-![workflow status](https://github.com/samujjwaal/can-akka/workflows/Test%20and%20Docker%20Deploy/badge.svg)
+![workflow status](https://github.com/samujjwaal/akka-overlay-networks/workflows/Test%20and%20Docker%20Deploy/badge.svg)
+![GitHub repo size](https://img.shields.io/github/repo-size/samujjwaal/akka-overlay-networks)
+![GitHub last commit (branch)](https://img.shields.io/github/last-commit/samujjwaal/akka-overlay-networks/master)
+![GitHub top language](https://img.shields.io/github/languages/top/samujjwaal/akka-overlay-networks)
+![](https://img.shields.io/badge/-Scala-DE3423?style=flat&logo=scala&logoColor=white)
 
 # CS 441 Course Project
 
