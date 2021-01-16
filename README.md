@@ -1,10 +1,10 @@
-![workflow status](https://github.com/samujjwaal/akka-overlay-networks/workflows/Test%20and%20Docker%20Deploy/badge.svg)
-![GitHub repo size](https://img.shields.io/github/repo-size/samujjwaal/akka-overlay-networks)
-![GitHub last commit (branch)](https://img.shields.io/github/last-commit/samujjwaal/akka-overlay-networks/master)
-![GitHub top language](https://img.shields.io/github/languages/top/samujjwaal/akka-overlay-networks)
+![workflow status](https://github.com/samujjwaal/akka-overlay-net-sim/workflows/Test%20and%20Docker%20Deploy/badge.svg)
+![GitHub repo size](https://img.shields.io/github/repo-size/samujjwaal/akka-overlay-net-sim)
+![GitHub last commit (branch)](https://img.shields.io/github/last-commit/samujjwaal/akka-overlay-net-sim/master)
+![GitHub top language](https://img.shields.io/github/languages/top/samujjwaal/akka-overlay-net-sim)
 ![](https://img.shields.io/badge/-Scala-DE3423?style=flat&logo=scala&logoColor=white)
 
-# CS 441 Course Project
+# Overlay Network Simulator using Akka
 
 ## Description: Design and implement an Actor-based computational model for the Chord and CAN overlay network algorithms
 
